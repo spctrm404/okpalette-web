@@ -35,9 +35,9 @@ vec3 lchToLab(vec3 lch) {
 
 vec3 oklabToLLms(vec3 oklab) {
   mat3 oklabToLms = mat3(
-     1           ,  0.3963377774,  0.2158037573,
-     1           , -0.1055613458, -0.0638541728,
-     1           , -0.0894841775, -1.291485548
+     1.0         ,  0.3963377774,  0.2158037573,
+     1.0         , -0.1055613458, -0.0638541728,
+     1.0         , -0.0894841775, -1.291485548
   );
   vec3 lms = transposeMatVec(oklabToLms, oklab);
   vec3 lLms = pow(abs(lms), vec3(3.0)) * sign(lms);
@@ -65,9 +65,9 @@ vec3 oklabToLDispP3(vec3 oklab) {
   );
   vec3 xyz = transposeMatVec(lLmsToXyz, lLms);
   mat3 xyzToLDispP3 = mat3(
-     2.403984 , -0.9899069, -0.3976415,
-    -0.8422229,  1.7988437,  0.0160354,
-     0.0482059, -0.0974068,  1.2740049
+     2.49349691, -0.93138362, -0.40271078,
+    -0.82948897,  1.762664  ,  0.02362469,
+     0.03584583, -0.07617239,  0.95688452
   );
 
   return transposeMatVec(xyzToLDispP3, xyz);
@@ -105,8 +105,8 @@ float axisMap(
   float maxValue,
   vec2 coord
 ) {
-  float value = mix(coord.x, coord.y, step(0.0, mapping));
-  value = mix(value, 1.0 - value, step(0.0, flipped));
+  float value = mix(coord.x, coord.y, step(1.0, mapping));
+  value = mix(value, 1.0 - value, step(1.0, flipped));
 
   return mix(minValue, maxValue, value);
 }
@@ -115,7 +115,7 @@ void main() {
   vec2 coord = gl_FragCoord.xy / u_Resolution;
 
   float l = axisMap(u_LMappedTo, u_LFlipped, 0.0, 1.0, coord);
-  float c = axisMap(u_CMappedTo, u_CFlipped, 0.0, 1.0, coord);
+  float c = axisMap(u_CMappedTo, u_CFlipped, 0.0, 0.4, coord);
 
   float hDegTo = mix(u_HDegTo + 360.0, u_HDegTo, step(u_HDegFrom, u_HDegTo));
   float hDeg = axisMap(u_HMappedTo, u_HFlipped, u_HDegFrom, hDegTo, coord);
@@ -137,9 +137,8 @@ void main() {
     bool inGamut = isInGamut(lDispP3);
 
     if (inGamut) {
-      // float alpha = isAtSrgbBoundary(oklch) ? 0.0 : 1.0;
-      // outColor = vec4(dispP3, alpha);
-      outColor = vec4(dispP3, 1.0);
+      float alpha = isAtSrgbBoundary(oklch) ? 0.0 : 1.0;
+      outColor = vec4(dispP3, alpha);
     } else {
       outColor = vec4(0.0, 0.0, 0.0, 0.0);
     }

@@ -37,10 +37,10 @@ function App() {
       {svgGammaCurve({})}
       <CurveEditor />
       <GamutGl
-        lMapping={{ mappedTo: "x", flipped: false }}
-        cMapping={{ mappedTo: "y", flipped: true }}
-        hMapping={{ mappedTo: "x", flipped: false }}
-        hues={{ from: 0, to: 1 }}
+        lMapping={{ mappedTo: "y", flipped: false }}
+        cMapping={{ mappedTo: "x", flipped: false }}
+        hMapping={{ mappedTo: "y", flipped: false }}
+        hues={{ from: 20, to: 30 }}
         gamut="displayP3"
       />
     </>
