@@ -1,31 +1,46 @@
 import { useEffect, useRef } from "react";
 import vertex from "./vertex.glsl";
 import fragment from "./fragment.glsl";
+import st from "./_GamutGl.module.scss";
+import classNames from "classnames";
 
-type AxisConfig = "LC" | "HC" | "HL";
-// type Xy = {x:number, y:number};
-type Fx = (input: number) => number;
+const cx = classNames.bind(st);
+
+type AxisMapping = {
+  mappedTo: "x" | "y";
+  flipped: boolean;
+};
 
 type GamutGlProps = {
-  axisConfig: AxisConfig;
-  fx: Fx;
-  resolutionMultiplier: number;
+  lMapping: AxisMapping;
+  cMapping: AxisMapping;
+  hMapping: AxisMapping;
+  hues: { from: number; to: number };
+  gamut?: "srgb" | "displayP3";
+  resolutionMultiplier?: number;
+  boundaryChkCDelta?: number;
+  className?: string;
 };
 
 const GamutGl = ({
-  axisConfig,
-  fx,
+  lMapping = { mappedTo: "x", flipped: false },
+  cMapping = { mappedTo: "y", flipped: false },
+  hMapping = { mappedTo: "x", flipped: false },
+  hues,
+  gamut = "displayP3",
   resolutionMultiplier = 1,
+  boundaryChkCDelta = 0.002,
+  ...props
 }: GamutGlProps) => {
-  const containerRef = useRef<HTMLDivElement>();
-  const canvasRef = useRef<HTMLCanvasElement>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const createShader = (
       gl: WebGL2RenderingContext,
       type: number,
       source: string,
-    ) => {
+    ): WebGLShader | null => {
       const shader = gl.createShader(type);
       if (!shader) return null;
       gl.shaderSource(shader, source);
@@ -42,7 +57,7 @@ const GamutGl = ({
       gl: WebGL2RenderingContext,
       vertexShader: WebGLShader,
       fragmentShader: WebGLShader,
-    ) => {
+    ): WebGLProgram | null => {
       const program = gl.createProgram();
       if (!program) return null;
       gl.attachShader(program, vertexShader);
@@ -57,10 +72,10 @@ const GamutGl = ({
       return program;
     };
 
-    const container = containerRef.current;
     const canvas = canvasRef.current;
+    const container = containerRef.current;
     const gl = canvas?.getContext("webgl2");
-    if (!container || !canvas || !gl) return;
+    if (!canvas || !container || !gl) return;
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment);
@@ -69,26 +84,61 @@ const GamutGl = ({
     const program = createProgram(gl, vertexShader, fragmentShader);
     if (!program) return;
 
+    console.log("GamutGl");
     gl.useProgram(program);
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+    const vertices = new Float32Array([
+      -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0,
+    ]);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-    const positionAttributeLocation = gl.getAttribLocation(
-      program,
-      "a_position",
-    );
-    gl.enableVertexAttribArray(positionAttributeLocation);
-    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    const positionLocation = gl.getAttribLocation(program, "a_Position");
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
     const render = () => {
       gl.clear(gl.COLOR_BUFFER_BIT);
+
       gl.uniform2f(
-        gl.getUniformLocation(program, "u_resolution"),
+        gl.getUniformLocation(program!, "u_Resolution"),
         gl.canvas.width,
         gl.canvas.height,
       );
-      // 변수 삽입
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_LMappedTo"),
+        lMapping.mappedTo === "x" ? 0 : 1,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_LFlipped"),
+        lMapping.flipped ? 1 : 0,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_CMappedTo"),
+        cMapping.mappedTo === "x" ? 0 : 1,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_CFlipped"),
+        cMapping.flipped ? 1 : 0,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_HMappedTo"),
+        hMapping.mappedTo === "x" ? 0 : 1,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_HFlipped"),
+        hMapping.flipped ? 1 : 0,
+      );
+      gl.uniform1f(gl.getUniformLocation(program!, "u_HDegFrom"), hues.from);
+      gl.uniform1f(gl.getUniformLocation(program!, "u_HDegTo"), hues.to);
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_Gamut"),
+        gamut === "srgb" ? 0 : 1,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program!, "u_BoundaryChkCDelta"),
+        boundaryChkCDelta,
+      );
+
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
 
@@ -101,14 +151,31 @@ const GamutGl = ({
     };
 
     resizeCanvas();
-
     const resizeObserver = new ResizeObserver(resizeCanvas);
     resizeObserver.observe(container);
 
     return () => {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [
+    lMapping,
+    cMapping,
+    hMapping,
+    hues,
+    gamut,
+    resolutionMultiplier,
+    boundaryChkCDelta,
+  ]);
+
+  return (
+    <div
+      className={cx("gamut-gl-container", props.className)}
+      style={{ width: "300px", height: "300px" }}
+      ref={containerRef}
+    >
+      <canvas className={cx("gamut-gl")} ref={canvasRef} />
+    </div>
+  );
 };
 
 export default GamutGl;

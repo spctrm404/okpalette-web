@@ -1,26 +1,24 @@
-// glsl-stage: fragment
 #version 300 es
 precision highp float;
 
 uniform vec2 u_Resolution;
-uniform int u_LMapping; // 0: x, 1: y
-uniform int u_CMapping; // 0: x, 1: y
-uniform int u_HMapping; // 0: x, 1: y
-uniform float u_LFrom;
-uniform float u_LTo;
-uniform float u_CFrom;
-uniform float u_CTo;
+uniform float u_LMappedTo; // 0: x, 1: y
+uniform float u_LFlipped;
+uniform float u_CMappedTo; // 0: x, 1: y
+uniform float u_CFlipped;
+uniform float u_HMappedTo; // 0: x, 1: y
+uniform float u_HFlipped;
 uniform float u_HDegFrom;
 uniform float u_HDegTo;
-uniform int u_Gamut; // 0: sRGB, 1: Display P3
+uniform float u_Gamut; // 0: sRGB, 1: Display P3
 uniform float u_BoundaryChkCDelta;
 
 out vec4 outColor;
 
 const float PI = 3.1415927;
 const float DEG2RAD = PI / 180.0;
-const int GAMUT_SRGB = 0;
-const int GAMUT_DISPP3 = 1;
+const float GAMUT_SRGB = 0.0;
+const float GAMUT_DISPP3 = 1.0;
 
 bool isInGamut(vec3 v) {
   return all(greaterThanEqual(v, vec3(0.0))) &&
@@ -43,6 +41,7 @@ vec3 oklabToLLms(vec3 oklab) {
   );
   vec3 lms = transposeMatVec(oklabToLms, oklab);
   vec3 lLms = pow(abs(lms), vec3(3.0)) * sign(lms);
+
   return lLms;
 }
 
@@ -74,7 +73,7 @@ vec3 oklabToLDispP3(vec3 oklab) {
   return transposeMatVec(xyzToLDispP3, xyz);
 }
 
-vec3 applySrgbOetf(vec3 rgb) {
+vec3 linearToNonLinear(vec3 rgb) {
   vec3 absRgb = abs(rgb);
   vec3 signRgb = sign(rgb);
   vec3 threshold = vec3(0.0031308);
@@ -99,42 +98,48 @@ bool isAtSrgbBoundary(vec3 oklch) {
   return inSrgbGamut && !inSrgbGamutIncC;
 }
 
-float mapAxis(int mapping, vec2 coord, float minValue, float maxValue) {
-  float value = mapping == 0 ? coord.x : coord.y;
+float axisMap(
+  float mapping,
+  float flipped,
+  float minValue,
+  float maxValue,
+  vec2 coord
+) {
+  float value = mix(coord.x, coord.y, step(0.0, mapping));
+  value = mix(value, 1.0 - value, step(0.0, flipped));
+
   return mix(minValue, maxValue, value);
 }
 
 void main() {
   vec2 coord = gl_FragCoord.xy / u_Resolution;
-  float x = coord.x;
-  float y = coord.y;
 
-  float l = mapAxis(u_LMapping, coord, u_LFrom, u_LTo);
-  float c = mapAxis(u_CMapping, coord, u_CFrom, u_CTo);
+  float l = axisMap(u_LMappedTo, u_LFlipped, 0.0, 1.0, coord);
+  float c = axisMap(u_CMappedTo, u_CFlipped, 0.0, 1.0, coord);
 
-  float hDegTo = u_HDegTo < u_HDegFrom ? u_HDegTo + 360.0 : u_HDegTo;
-  float hDeg = mapAxis(u_HMapping, coord, u_HDegFrom, hDegTo);
+  float hDegTo = mix(u_HDegTo + 360.0, u_HDegTo, step(u_HDegFrom, u_HDegTo));
+  float hDeg = axisMap(u_HMappedTo, u_HFlipped, u_HDegFrom, hDegTo, coord);
   hDeg = mod(hDeg, 360.0);
   float hRad = hDeg * DEG2RAD;
 
   vec3 oklch = vec3(l, c, hRad);
-
   vec3 oklab = lchToLab(oklch);
 
   if (u_Gamut == GAMUT_SRGB) {
     vec3 lSrgb = oklabToLSrgb(oklab);
-    vec3 srgb = applySrgbOetf(lSrgb);
+    vec3 srgb = linearToNonLinear(lSrgb);
     bool inGamut = isInGamut(lSrgb);
 
     outColor = inGamut ? vec4(srgb, 1.0) : vec4(0.0, 0.0, 0.0, 0.0);
   } else if (u_Gamut == GAMUT_DISPP3) {
     vec3 lDispP3 = oklabToLDispP3(oklab);
-    vec3 dispP3 = applySrgbOetf(lDispP3);
+    vec3 dispP3 = linearToNonLinear(lDispP3);
     bool inGamut = isInGamut(lDispP3);
 
     if (inGamut) {
-      float alpha = isAtSrgbBoundary(oklch) ? 0.0 : 1.0;
-      outColor = vec4(dispP3, alpha);
+      // float alpha = isAtSrgbBoundary(oklch) ? 0.0 : 1.0;
+      // outColor = vec4(dispP3, alpha);
+      outColor = vec4(dispP3, 1.0);
     } else {
       outColor = vec4(0.0, 0.0, 0.0, 0.0);
     }
