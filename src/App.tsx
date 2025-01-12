@@ -2,47 +2,89 @@ import CurveEditor from "./component/CurveEditor";
 import GamutGl from "./component/GamutGL/GammutGl";
 
 import "./App.css";
+import { useState } from "react";
 
 function App() {
-  const getGammaCurveValue = ({ gamma = 2.2, x = 0 }) => {
-    return Math.pow(x, gamma);
-  };
-
-  const svgGammaCurve = ({
-    gamma = 2.2,
-    resolution = 100,
-    width = 100,
-    height = 100,
-  }) => {
-    const points = Array.from({ length: resolution + 1 }, (_, idx) => {
-      const x = idx / resolution;
-      const y = getGammaCurveValue({ gamma, x });
-      return { x, y };
-    });
-    const dInit = "";
-    const d = points.reduce((d, aPoint, idx) => {
-      return idx === 0
-        ? `M ${aPoint.x * width},${(1 - aPoint.y) * height}`
-        : `${d} L ${aPoint.x * width},${(1 - aPoint.y) * height}`;
-    }, dInit);
-    return (
-      <svg width={width} height={height} style={{ border: "1px solid black" }}>
-        <path d={d} fill="none" stroke="blue" strokeWidth="2" />
-      </svg>
-    );
-  };
-
+  const [l, setL] = useState(0.8);
+  const [c, setC] = useState(0.2);
+  const [hFrom, setHFrom] = useState(120);
+  const [hTo, setHTo] = useState(240);
   return (
     <>
-      {svgGammaCurve({})}
-      <CurveEditor />
-      <GamutGl
-        lMapping={{ mappedTo: "y", flipped: false }}
-        cMapping={{ mappedTo: "x", flipped: false }}
-        hMapping={{ mappedTo: "y", flipped: false }}
-        hues={{ from: 20, to: 30 }}
-        gamut="displayP3"
-      />
+      <div>
+        <input
+          type="range"
+          name="l"
+          min={0}
+          max={1}
+          step={0.001}
+          onChange={(e) => {
+            setL(e.currentTarget.valueAsNumber);
+          }}
+        />
+        <input
+          type="range"
+          name="c"
+          min={0}
+          max={0.4}
+          step={0.001}
+          onChange={(e) => {
+            setC(e.currentTarget.valueAsNumber);
+          }}
+        />
+        <input
+          type="range"
+          name="hFrom"
+          min={0}
+          max={360}
+          step={1}
+          onChange={(e) => {
+            setHFrom(e.currentTarget.valueAsNumber);
+          }}
+        />
+        <input
+          type="range"
+          name="hTo"
+          min={0}
+          max={360}
+          step={1}
+          onChange={(e) => {
+            setHTo(e.currentTarget.valueAsNumber);
+          }}
+        />
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gridTemplateRows: "1fr 1fr",
+        }}
+      >
+        <GamutGl
+          lMapping={{ mappedTo: "x", flipped: false, from: 0, to: 1 }}
+          cMapping={{ mappedTo: "y", flipped: false, from: 0, to: 0.4 }}
+          hMapping={{ mappedTo: "x", flipped: false, from: hFrom, to: hTo }}
+          gamut="displayP3"
+        />
+        <GamutGl
+          lMapping={{ mappedTo: "none", flipped: false, from: l, to: 1 }}
+          cMapping={{ mappedTo: "y", flipped: false, from: 0, to: 0.4 }}
+          hMapping={{ mappedTo: "x", flipped: false, from: 0, to: 360 }}
+          gamut="displayP3"
+        />
+        <GamutGl
+          lMapping={{ mappedTo: "x", flipped: false, from: 0, to: 1 }}
+          cMapping={{ mappedTo: "y", flipped: false, from: 0, to: 0.4 }}
+          hMapping={{ mappedTo: "x", flipped: false, from: 120, to: 240 }}
+          gamut="displayP3"
+        />
+        <GamutGl
+          lMapping={{ mappedTo: "y", flipped: false, from: 0, to: 1 }}
+          cMapping={{ mappedTo: "none", flipped: false, from: c, to: 0 }}
+          hMapping={{ mappedTo: "x", flipped: false, from: 0, to: 360 }}
+          gamut="displayP3"
+        />
+      </div>
     </>
   );
 }

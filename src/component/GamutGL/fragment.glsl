@@ -1,17 +1,21 @@
 #version 300 es
 precision highp float;
 
-uniform vec2 u_Resolution;
-uniform float u_LMappedTo; // 0: x, 1: y
-uniform float u_LFlipped;
-uniform float u_CMappedTo; // 0: x, 1: y
-uniform float u_CFlipped;
-uniform float u_HMappedTo; // 0: x, 1: y
-uniform float u_HFlipped;
-uniform float u_HDegFrom;
-uniform float u_HDegTo;
-uniform float u_Gamut; // 0: sRGB, 1: Display P3
-uniform float u_BoundaryChkCDelta;
+uniform vec2 u_resolution;
+uniform float u_lMappedTo; // 0: x, 1: y
+uniform float u_lFlipped;
+uniform float u_lFrom;
+uniform float u_lTo;
+uniform float u_cMappedTo; // 0: x, 1: y
+uniform float u_cFlipped;
+uniform float u_cFrom;
+uniform float u_cTo;
+uniform float u_hMappedTo; // 0: x, 1: y
+uniform float u_hFlipped;
+uniform float u_hFrom;
+uniform float u_hTo;
+uniform float u_gamut; // 0: sRGB, 1: Display P3
+uniform float u_boundaryChkCDelta;
 
 out vec4 outColor;
 
@@ -90,7 +94,7 @@ bool isAtSrgbBoundary(vec3 oklch) {
   vec3 lSrgb = oklabToLSrgb(oklab);
   bool inSrgbGamut = isInGamut(lSrgb);
 
-  vec3 oklchIncC = vec3(oklch.x, oklch.y + u_BoundaryChkCDelta, oklch.z);
+  vec3 oklchIncC = vec3(oklch.x, oklch.y + u_boundaryChkCDelta, oklch.z);
   vec3 oklabIncC = lchToLab(oklchIncC);
   vec3 lSrgbIncC = oklabToLSrgb(oklabIncC);
   bool inSrgbGamutIncC = isInGamut(lSrgbIncC);
@@ -112,26 +116,26 @@ float axisMap(
 }
 
 void main() {
-  vec2 coord = gl_FragCoord.xy / u_Resolution;
+  vec2 coord = gl_FragCoord.xy / u_resolution;
 
-  float l = axisMap(u_LMappedTo, u_LFlipped, 0.0, 1.0, coord);
-  float c = axisMap(u_CMappedTo, u_CFlipped, 0.0, 0.4, coord);
+  float l = axisMap(u_lMappedTo, u_lFlipped, u_lFrom, u_lTo, coord);
+  float c = axisMap(u_cMappedTo, u_cFlipped, u_cFrom, u_cTo, coord);
 
-  float hDegTo = mix(u_HDegTo + 360.0, u_HDegTo, step(u_HDegFrom, u_HDegTo));
-  float hDeg = axisMap(u_HMappedTo, u_HFlipped, u_HDegFrom, hDegTo, coord);
+  float hTo = mix(u_hTo + 360.0, u_hTo, step(u_hFrom, u_hTo));
+  float hDeg = axisMap(u_hMappedTo, u_hFlipped, u_hFrom, hTo, coord);
   hDeg = mod(hDeg, 360.0);
-  float hRad = hDeg * DEG2RAD;
+  float h = hDeg * DEG2RAD;
 
-  vec3 oklch = vec3(l, c, hRad);
+  vec3 oklch = vec3(l, c, h);
   vec3 oklab = lchToLab(oklch);
 
-  if (u_Gamut == GAMUT_SRGB) {
+  if (u_gamut == GAMUT_SRGB) {
     vec3 lSrgb = oklabToLSrgb(oklab);
     vec3 srgb = linearToNonLinear(lSrgb);
     bool inGamut = isInGamut(lSrgb);
 
     outColor = inGamut ? vec4(srgb, 1.0) : vec4(0.0, 0.0, 0.0, 0.0);
-  } else if (u_Gamut == GAMUT_DISPP3) {
+  } else if (u_gamut == GAMUT_DISPP3) {
     vec3 lDispP3 = oklabToLDispP3(oklab);
     vec3 dispP3 = linearToNonLinear(lDispP3);
     bool inGamut = isInGamut(lDispP3);

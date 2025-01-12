@@ -7,15 +7,16 @@ import classNames from "classnames";
 const cx = classNames.bind(st);
 
 type AxisMapping = {
-  mappedTo: "x" | "y";
+  mappedTo: "x" | "y" | "none";
   flipped: boolean;
+  from: number;
+  to: number;
 };
 
 type GamutGlProps = {
   lMapping: AxisMapping;
   cMapping: AxisMapping;
   hMapping: AxisMapping;
-  hues: { from: number; to: number };
   gamut?: "srgb" | "displayP3";
   resolutionMultiplier?: number;
   boundaryChkCDelta?: number;
@@ -23,10 +24,9 @@ type GamutGlProps = {
 };
 
 const GamutGl = ({
-  lMapping = { mappedTo: "x", flipped: false },
-  cMapping = { mappedTo: "y", flipped: false },
-  hMapping = { mappedTo: "x", flipped: false },
-  hues,
+  lMapping = { mappedTo: "x", flipped: false, from: 0, to: 1 },
+  cMapping = { mappedTo: "y", flipped: false, from: 0, to: 0.4 },
+  hMapping = { mappedTo: "x", flipped: false, from: 0, to: 360 },
   gamut = "displayP3",
   resolutionMultiplier = 1,
   boundaryChkCDelta = 0.002,
@@ -84,7 +84,6 @@ const GamutGl = ({
     const program = createProgram(gl, vertexShader, fragmentShader);
     if (!program) return;
 
-    console.log("GamutGl");
     gl.useProgram(program);
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -100,42 +99,41 @@ const GamutGl = ({
       gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.uniform2f(
-        gl.getUniformLocation(program!, "u_Resolution"),
+        gl.getUniformLocation(program!, "u_resolution"),
         gl.canvas.width,
         gl.canvas.height,
       );
+      const pourMapping = (mapping: AxisMapping, prefix: string) => {
+        gl.uniform1f(
+          gl.getUniformLocation(program!, `u_${prefix}MappedTo`),
+          mapping.mappedTo !== "y" ? 0 : 1,
+        );
+        console.log(`u_${prefix}MappedTo`, mapping.mappedTo);
+        gl.uniform1f(
+          gl.getUniformLocation(program!, `u_${prefix}Flipped`),
+          mapping.mappedTo === "none" ? 0 : mapping.flipped ? 1 : 0,
+        );
+        console.log(`u_${prefix}Flipped`, mapping.flipped);
+        gl.uniform1f(
+          gl.getUniformLocation(program!, `u_${prefix}From`),
+          mapping.from,
+        );
+        console.log(`u_${prefix}From`, mapping.from);
+        gl.uniform1f(
+          gl.getUniformLocation(program!, `u_${prefix}To`),
+          mapping.mappedTo === "none" ? mapping.from : mapping.to,
+        );
+        console.log(`u_${prefix}To`, mapping.to);
+      };
+      pourMapping(lMapping, "l");
+      pourMapping(cMapping, "c");
+      pourMapping(hMapping, "h");
       gl.uniform1f(
-        gl.getUniformLocation(program!, "u_LMappedTo"),
-        lMapping.mappedTo === "x" ? 0 : 1,
-      );
-      gl.uniform1f(
-        gl.getUniformLocation(program!, "u_LFlipped"),
-        lMapping.flipped ? 1 : 0,
-      );
-      gl.uniform1f(
-        gl.getUniformLocation(program!, "u_CMappedTo"),
-        cMapping.mappedTo === "x" ? 0 : 1,
-      );
-      gl.uniform1f(
-        gl.getUniformLocation(program!, "u_CFlipped"),
-        cMapping.flipped ? 1 : 0,
-      );
-      gl.uniform1f(
-        gl.getUniformLocation(program!, "u_HMappedTo"),
-        hMapping.mappedTo === "x" ? 0 : 1,
-      );
-      gl.uniform1f(
-        gl.getUniformLocation(program!, "u_HFlipped"),
-        hMapping.flipped ? 1 : 0,
-      );
-      gl.uniform1f(gl.getUniformLocation(program!, "u_HDegFrom"), hues.from);
-      gl.uniform1f(gl.getUniformLocation(program!, "u_HDegTo"), hues.to);
-      gl.uniform1f(
-        gl.getUniformLocation(program!, "u_Gamut"),
+        gl.getUniformLocation(program!, "u_gamut"),
         gamut === "srgb" ? 0 : 1,
       );
       gl.uniform1f(
-        gl.getUniformLocation(program!, "u_BoundaryChkCDelta"),
+        gl.getUniformLocation(program!, "u_boundaryChkCDelta"),
         boundaryChkCDelta,
       );
 
@@ -146,6 +144,7 @@ const GamutGl = ({
       const { width, height } = container.getBoundingClientRect();
       canvas.width = width * resolutionMultiplier;
       canvas.height = height * resolutionMultiplier;
+
       gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
       render();
     };
@@ -161,7 +160,6 @@ const GamutGl = ({
     lMapping,
     cMapping,
     hMapping,
-    hues,
     gamut,
     resolutionMultiplier,
     boundaryChkCDelta,
