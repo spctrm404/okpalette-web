@@ -55,9 +55,10 @@ function App() {
       </div>
       <div
         style={{
+          width: "100%",
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gridTemplateRows: "1fr 1fr",
+          gridTemplateColumns: "repeat(2, minmax(300px, 1fr))",
+          gridTemplateRows: "repeat(2, minmax(150px, 200px))",
         }}
       >
         <GamutGl
