@@ -62,27 +62,32 @@ function App() {
         }}
       >
         <GamutGl
-          lMapping={{ mappedTo: "x", flipped: false, from: 0, to: 1 }}
-          cMapping={{ mappedTo: "y", flipped: false, from: 0, to: 0.4 }}
-          hMapping={{ mappedTo: "x", flipped: false, from: hFrom, to: hTo }}
+          lMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 1 }}
+          cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
+          hMapping={{ mappedTo: "x", flipped: "none", from: hFrom, to: hTo }}
           gamut="displayP3"
         />
         <GamutGl
-          lMapping={{ mappedTo: "none", flipped: false, from: l, to: 1 }}
-          cMapping={{ mappedTo: "y", flipped: false, from: 0, to: 0.4 }}
-          hMapping={{ mappedTo: "x", flipped: false, from: 0, to: 360 }}
+          lMapping={{ mappedTo: "none", flipped: "none", from: l, to: 1 }}
+          cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
+          hMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 360 }}
           gamut="displayP3"
         />
         <GamutGl
-          lMapping={{ mappedTo: "x", flipped: false, from: 0, to: 1 }}
-          cMapping={{ mappedTo: "y", flipped: false, from: 0, to: 0.4 }}
-          hMapping={{ mappedTo: "x", flipped: false, from: 120, to: 240 }}
+          lMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 1 }}
+          cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
+          hMapping={{
+            mappedTo: "none",
+            flipped: "none",
+            from: hFrom + hTo * 0.5,
+            to: hTo,
+          }}
           gamut="displayP3"
         />
         <GamutGl
-          lMapping={{ mappedTo: "y", flipped: false, from: 0, to: 1 }}
-          cMapping={{ mappedTo: "none", flipped: false, from: c, to: 0 }}
-          hMapping={{ mappedTo: "x", flipped: false, from: 0, to: 360 }}
+          lMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 1 }}
+          cMapping={{ mappedTo: "none", flipped: "none", from: c, to: 0 }}
+          hMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 360 }}
           gamut="displayP3"
         />
       </div>

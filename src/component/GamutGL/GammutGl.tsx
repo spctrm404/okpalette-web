@@ -6,9 +6,16 @@ import classNames from "classnames";
 
 const cx = classNames.bind(st);
 
+enum AxisValue {
+  none = 0,
+  x = 1,
+  y = 2,
+  xy = 3,
+}
+
 type AxisMapping = {
-  mappedTo: "x" | "y" | "none";
-  flipped: boolean;
+  mappedTo: keyof typeof AxisValue;
+  flipped: keyof typeof AxisValue;
   from: number;
   to: number;
 };
@@ -24,11 +31,11 @@ type GamutGlProps = {
 };
 
 const GamutGl = ({
-  lMapping = { mappedTo: "x", flipped: false, from: 0, to: 1 },
-  cMapping = { mappedTo: "y", flipped: false, from: 0, to: 0.4 },
-  hMapping = { mappedTo: "x", flipped: false, from: 0, to: 360 },
+  lMapping = { mappedTo: "x", flipped: "none", from: 0, to: 1 },
+  cMapping = { mappedTo: "y", flipped: "none", from: 0, to: 0.4 },
+  hMapping = { mappedTo: "x", flipped: "none", from: 0, to: 360 },
   gamut = "displayP3",
-  resolutionMultiplier = 4,
+  resolutionMultiplier = 2,
   boundaryChkCDelta = 0.002,
   ...props
 }: GamutGlProps) => {
@@ -46,12 +53,12 @@ const GamutGl = ({
       const pourMapping = (mapping: AxisMapping, prefix: string) => {
         gl.uniform1f(
           gl.getUniformLocation(program!, `u_${prefix}MappedTo`),
-          mapping.mappedTo !== "y" ? 0 : 1,
+          AxisValue[mapping.mappedTo],
         );
         console.log(`u_${prefix}MappedTo`, mapping.mappedTo);
         gl.uniform1f(
           gl.getUniformLocation(program!, `u_${prefix}Flipped`),
-          mapping.mappedTo === "none" ? 0 : mapping.flipped ? 1 : 0,
+          AxisValue[mapping.flipped],
         );
         console.log(`u_${prefix}Flipped`, mapping.flipped);
         gl.uniform1f(
@@ -61,7 +68,7 @@ const GamutGl = ({
         console.log(`u_${prefix}From`, mapping.from);
         gl.uniform1f(
           gl.getUniformLocation(program!, `u_${prefix}To`),
-          mapping.mappedTo === "none" ? mapping.from : mapping.to,
+          mapping.to,
         );
         console.log(`u_${prefix}To`, mapping.to);
       };
