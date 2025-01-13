@@ -1,25 +1,20 @@
-import { Matrix } from "@types/commonTypes";
-import { RGB, LCH, CuloriOklch } from "@types/colourTypes";
 import {
+  RGB,
+  LCH,
+  CuloriOklch,
   Hues,
   PaletteParam,
   Palette,
   Swatch,
-  ApcaMatrix,
-} from "@types/paletteTypes";
-import { FigmaDocumentColorSpace } from "@types/figmaTypes";
-
+} from "@/types";
+import { inGamut, converter, clampChroma } from "culori";
 import {
   LIGHTNESS_STEP,
   CHROMA_STEP,
   HUE_STEP,
   DISP_P3_CHROMA_LIMIT,
-} from "../constants";
-
-import { quantize } from "./numberUtils";
-
-import { inGamut, converter, clampChroma } from "culori";
-import { APCAcontrast, displayP3toY, sRGBtoY } from "apca-w3";
+} from "@/constants";
+import { quantize } from "@/utils";
 
 export const nomalizedRgbToHex = ({ r, g, b }: RGB): string => {
   return [r, g, b]
@@ -193,45 +188,4 @@ export const createPalette = ({
   }
 
   return { swatchStep, peakLightness, peakChroma, hues, swatches };
-};
-
-export const calculateApcaScore = (
-  { r: fgR, g: fgG, b: fgB }: RGB,
-  { r: bgR, g: bgG, b: bgB }: RGB,
-  colorspace: FigmaDocumentColorSpace,
-): number => {
-  const fgY =
-    colorspace == "DISPLAY_P3"
-      ? displayP3toY([fgR, fgG, fgB])
-      : sRGBtoY([fgR, fgG, fgB]);
-  const bgY =
-    colorspace == "DISPLAY_P3"
-      ? displayP3toY([bgR, bgG, bgB])
-      : sRGBtoY([bgR, bgG, bgB]);
-  const contrast = APCAcontrast(fgY, bgY);
-  return Math.round(Number(contrast));
-};
-
-export const createApcaMatrix = (
-  palette: Palette,
-  colorspace: FigmaDocumentColorSpace,
-): ApcaMatrix => {
-  const swatches = palette.swatches;
-  const matrix: Matrix = new Matrix(swatches.length, swatches.length);
-  swatches.forEach((bg, xIdx) => {
-    swatches.forEach((fg, yIdx) => {
-      matrix.setValueByCoord(
-        { x: xIdx, y: yIdx },
-        calculateApcaScore(
-          colorspace == "DISPLAY_P3" ? fg.dispP3 : fg.sRgb,
-          colorspace == "DISPLAY_P3" ? bg.dispP3 : bg.sRgb,
-          colorspace,
-        ),
-      );
-    });
-  });
-  return {
-    palette,
-    matrix,
-  };
 };

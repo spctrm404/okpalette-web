@@ -1,5 +1,4 @@
-import type { Matrix } from "@/types/commonTypes";
-import type { RGB, LCH } from "@/types/colorTypes";
+import type { Matrix, RGB, LCH } from "@/types";
 
 export type Hues = {
   from: number;

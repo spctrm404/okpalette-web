@@ -1,4 +1,4 @@
-import { Hues } from "@types/paletteTypes";
+import { Hues } from "@/types";
 import {
   Theme,
   ThemeLightness,
@@ -22,12 +22,13 @@ import {
   THEME_ERROR_PEAK_LIGHTNESS,
   THEME_ERROR_PEAK_CHROMA,
 } from "@/constants";
-import { quantize } from "@utils/numberUtils";
 import {
+  quantize,
   replaceWordInCamelCase,
   camelCaseToKebabCase,
-} from "@utils/stringUtils";
-import { chromaForLightness, hueForLightness } from "@utils/colourUtils";
+  chromaForLightness,
+  hueForLightness,
+} from "@/utils";
 import {
   createContext,
   useCallback,

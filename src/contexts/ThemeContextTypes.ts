@@ -1,4 +1,4 @@
-import type { Hues } from "@types/paletteTypes";
+import type { Hues } from "@/types";
 
 export type Theme = "light" | "dark";
 
