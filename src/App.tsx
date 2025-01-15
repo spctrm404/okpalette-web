@@ -1,4 +1,3 @@
-import CurveEditor from "./component/CurveEditor";
 import GamutGl from "./component/GamutGL/GammutGl";
 
 import "./App.css";
@@ -62,18 +61,21 @@ function App() {
         }}
       >
         <GamutGl
+          resolutionMultiplier={2}
           lMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 1 }}
           cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
           hMapping={{ mappedTo: "x", flipped: "none", from: hFrom, to: hTo }}
           gamut="displayP3"
         />
         <GamutGl
+          resolutionMultiplier={2}
           lMapping={{ mappedTo: "none", flipped: "none", from: l, to: 1 }}
           cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
           hMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 360 }}
           gamut="displayP3"
         />
         <GamutGl
+          resolutionMultiplier={2}
           lMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 1 }}
           cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
           hMapping={{
@@ -85,6 +87,7 @@ function App() {
           gamut="displayP3"
         />
         <GamutGl
+          resolutionMultiplier={2}
           lMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 1 }}
           cMapping={{ mappedTo: "none", flipped: "none", from: c, to: 0 }}
           hMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 360 }}

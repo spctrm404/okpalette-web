@@ -26,7 +26,6 @@ type GamutGlProps = {
   hMapping: AxisMapping;
   gamut?: "srgb" | "displayP3";
   resolutionMultiplier?: number;
-  boundaryChkCDelta?: number;
   className?: string;
 };
 
@@ -35,8 +34,7 @@ const GamutGl = ({
   cMapping = { mappedTo: "y", flipped: "none", from: 0, to: 0.4 },
   hMapping = { mappedTo: "x", flipped: "none", from: 0, to: 360 },
   gamut = "displayP3",
-  resolutionMultiplier = 2,
-  boundaryChkCDelta = 0.002,
+  resolutionMultiplier = 4,
   ...props
 }: GamutGlProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,22 +53,18 @@ const GamutGl = ({
           gl.getUniformLocation(program!, `u_${prefix}MappedTo`),
           AxisValue[mapping.mappedTo],
         );
-        console.log(`u_${prefix}MappedTo`, mapping.mappedTo);
         gl.uniform1f(
           gl.getUniformLocation(program!, `u_${prefix}Flipped`),
           AxisValue[mapping.flipped],
         );
-        console.log(`u_${prefix}Flipped`, mapping.flipped);
         gl.uniform1f(
           gl.getUniformLocation(program!, `u_${prefix}From`),
           mapping.from,
         );
-        console.log(`u_${prefix}From`, mapping.from);
         gl.uniform1f(
           gl.getUniformLocation(program!, `u_${prefix}To`),
           mapping.to,
         );
-        console.log(`u_${prefix}To`, mapping.to);
       };
 
       pourMapping(lMapping, "l");
@@ -81,12 +75,8 @@ const GamutGl = ({
         gl.getUniformLocation(program!, "u_gamut"),
         gamut === "srgb" ? 0 : 1,
       );
-      gl.uniform1f(
-        gl.getUniformLocation(program!, "u_boundaryChkCDelta"),
-        boundaryChkCDelta,
-      );
     },
-    [lMapping, cMapping, hMapping, gamut, boundaryChkCDelta],
+    [lMapping, cMapping, hMapping, gamut],
   );
   const render = useCallback((gl: WebGL2RenderingContext) => {
     gl.clear(gl.COLOR_BUFFER_BIT);

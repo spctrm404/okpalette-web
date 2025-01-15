@@ -1,6 +1,18 @@
-import type { Hues } from "@/types";
-
 export type Theme = "light" | "dark";
+
+export type Hues = {
+  from: number;
+  to: number;
+};
+
+export type ThemeContextType = {
+  theme: Theme;
+  setTheme: React.Dispatch<React.SetStateAction<Theme>>;
+  toggleTheme: () => void;
+  hues: Hues;
+  setHues: React.Dispatch<React.SetStateAction<Hues>>;
+  syncHues: () => void;
+};
 
 export type ThemeLightness = {
   [key: string]: { light: number; dark: number };
@@ -8,7 +20,7 @@ export type ThemeLightness = {
 
 export type TonalPaletteConfig = {
   [key: string]: {
-    reference: React.MutableRefObject<ThemeLightness>;
+    reference: ThemeLightness;
     replacingName: boolean;
     isDynamic: boolean;
     peakChroma: number;
@@ -17,13 +29,4 @@ export type TonalPaletteConfig = {
     staticHue: number;
     hueShift: number;
   };
-};
-
-export type ThemeContextValue = {
-  theme: Theme;
-  hues: Hues;
-  setTheme?: React.Dispatch<React.SetStateAction<Theme>>;
-  toggleTheme?: () => void;
-  setHues?: React.Dispatch<React.SetStateAction<Hues>>;
-  syncHues?: () => void;
 };

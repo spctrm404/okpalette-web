@@ -15,7 +15,6 @@ uniform float u_hFlipped; // 0: none, 1: x, 2: y, 3: xy
 uniform float u_hFrom;
 uniform float u_hTo;
 uniform float u_gamut; // 0: sRGB, 1: Display P3
-uniform float u_boundaryChkCDelta;
 
 out vec4 outColor;
 
