@@ -7,10 +7,10 @@ export type Hues = {
 
 export type ThemeContextType = {
   theme: Theme;
-  setTheme: React.Dispatch<React.SetStateAction<Theme>>;
+  updateTheme: (newTheme: Theme) => void;
   toggleTheme: () => void;
   hues: Hues;
-  setHues: React.Dispatch<React.SetStateAction<Hues>>;
+  updateHues: (newHues: Hues) => void;
   syncHues: () => void;
 };
 

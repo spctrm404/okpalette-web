@@ -19,6 +19,12 @@ export const ThemeContextProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>("light");
   const [hues, setHues] = useState<Hues>({ from: 0, to: 0 });
 
+  const updateTheme = useCallback((newTheme: Theme) => {
+    setTheme(newTheme);
+  }, []);
+  const updateHues = useCallback((newHues: Hues) => {
+    setHues(newHues);
+  }, []);
   const toggleTheme = useCallback(() => {
     setTheme((prevTheme: Theme) => {
       return prevTheme === "light" ? "dark" : "light";
@@ -128,10 +134,10 @@ export const ThemeContextProvider = ({ children }: { children: ReactNode }) => {
     <ThemeContext.Provider
       value={{
         theme,
-        setTheme,
+        updateTheme,
         toggleTheme,
         hues,
-        setHues,
+        updateHues,
         syncHues,
       }}
     >
