@@ -20,7 +20,6 @@ out vec4 outColor;
 
 const float PI = 3.1415926536;
 const float DEG2RAD = PI / 180.0;
-const float GAMUT_SRGB = 0.0;
 const float GAMUT_DISPP3 = 1.0;
 
 float isInGamut(vec3 v) {

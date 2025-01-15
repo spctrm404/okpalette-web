@@ -40,6 +40,10 @@ const GamutGl = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const render = useCallback((gl: WebGL2RenderingContext) => {
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }, []);
   const updateUniforms = useCallback(
     (gl: WebGL2RenderingContext, program: WebGLProgram) => {
       gl.uniform2f(
@@ -78,10 +82,6 @@ const GamutGl = ({
     },
     [lMapping, cMapping, hMapping, gamut],
   );
-  const render = useCallback((gl: WebGL2RenderingContext) => {
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  }, []);
 
   // Initialize WebGL
   useEffect(() => {
@@ -157,7 +157,7 @@ const GamutGl = ({
 
     updateUniforms(gl, program);
     render(gl);
-  }, [updateUniforms]);
+  }, [render, updateUniforms]);
 
   // Resize canvas
   useEffect(() => {
@@ -185,7 +185,7 @@ const GamutGl = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [resolutionMultiplier]);
+  }, [render, resolutionMultiplier]);
 
   return (
     <div
