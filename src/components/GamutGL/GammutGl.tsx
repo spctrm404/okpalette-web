@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import vertex from "./vertex.glsl";
 import fragment from "./fragment.glsl";
 import st from "./_GamutGl.module.scss";
-import classNames from "classnames";
+import classNames from "classnames/bind";
 
 const cx = classNames.bind(st);
 

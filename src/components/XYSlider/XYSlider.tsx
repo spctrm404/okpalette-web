@@ -1,6 +1,5 @@
 // todo: arrow key problem
 
-import { clamp, quantize } from "@utils/numberUtils";
 import {
   useCallback,
   useEffect,
@@ -8,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { clamp, quantize } from "@/utils";
 import {
   mergeProps,
   MoveMoveEvent,
@@ -28,17 +28,21 @@ type XY = {
 };
 
 type XYSlliderProps = {
+  root: React.RefObject<HTMLDivElement>;
+  track: React.RefObject<HTMLDivElement>;
   value?: XY;
   minValue?: XY;
   maxValue?: XY;
   step?: XY;
-  onChangeEnd?: (newNumbers: XY) => void;
-  onChange?: (newNumbers: XY) => void;
+  onChangeEnd?: (newXY: XY) => void;
+  onChange?: (newXY: XY) => void;
   isDisabled?: boolean;
   className?: string;
 };
 
 const XYSlider = ({
+  root,
+  track,
   minValue = { x: 0, y: 0 },
   maxValue = { x: 100, y: 100 },
   step = { x: 1, y: 1 },
@@ -49,18 +53,16 @@ const XYSlider = ({
   className = "",
   ...props
 }: XYSlliderProps) => {
-  const currentPosition = useRef<XY>({ x: 0, y: 0 });
-  const normalPosition = useRef<XY>(currentPosition.current);
-  const [position, setPosition] = useState<XY>(currentPosition.current);
+  const positionRef = useRef<XY>({ x: 0, y: 0 });
+  const normPositionRef = useRef<XY>(positionRef.current);
+  const [position, setPosition] = useState<XY>(positionRef.current);
 
   const doSync = useRef(true);
 
   const [isDragging, setDragging] = useState(false);
   const [isFocused, setFocused] = useState(false);
 
-  const root = useRef<HTMLDivElement>(null);
-  const track = useRef<HTMLDivElement>(null);
-  const thumb = useRef<HTMLDivElement>(null);
+  const thumb = useRef<HTMLDivElement>();
 
   const getPositionFromValue = useCallback((): XY => {
     if (!track.current || !thumb.current) return { x: 0, y: 0 };
@@ -79,33 +81,46 @@ const XYSlider = ({
       x: getNormalizedValue().x * trackRect.width - 0.5 * thumbRect.width,
       y: getNormalizedValue().y * trackRect.height - 0.5 * thumbRect.height,
     };
-  }, [value, minValue, maxValue]);
+  }, [track, value, minValue, maxValue]);
 
-  useLayoutEffect(() => {
-    if (doSync.current) {
-      currentPosition.current = getPositionFromValue();
-      setNormalPosition();
-      setPosition(currentPosition.current);
-    }
-  }, [getPositionFromValue]);
-
-  const clampPosition = useCallback((position: XY): XY => {
+  const setNormalPosition = useCallback(() => {
     if (!track.current || !thumb.current) return { x: 0, y: 0 };
     const trackRect = track.current.getBoundingClientRect();
     const thumbRect = thumb.current.getBoundingClientRect();
-    return {
-      x: clamp(
-        position.x,
-        -0.5 * thumbRect.width,
-        trackRect.width - 0.5 * thumbRect.width,
-      ),
-      y: clamp(
-        position.y,
-        -0.5 * thumbRect.height,
-        trackRect.height - 0.5 * thumbRect.height,
-      ),
+    normPositionRef.current = {
+      x: (positionRef.current.x + 0.5 * thumbRect.width) / trackRect.width,
+      y: (positionRef.current.y + 0.5 * thumbRect.height) / trackRect.height,
     };
-  }, []);
+  }, [track]);
+
+  useLayoutEffect(() => {
+    if (doSync.current) {
+      positionRef.current = getPositionFromValue();
+      setNormalPosition();
+      setPosition(positionRef.current);
+    }
+  }, [getPositionFromValue, setNormalPosition]);
+
+  const clampPosition = useCallback(
+    (position: XY): XY => {
+      if (!track.current || !thumb.current) return { x: 0, y: 0 };
+      const trackRect = track.current.getBoundingClientRect();
+      const thumbRect = thumb.current.getBoundingClientRect();
+      return {
+        x: clamp(
+          position.x,
+          -0.5 * thumbRect.width,
+          trackRect.width - 0.5 * thumbRect.width,
+        ),
+        y: clamp(
+          position.y,
+          -0.5 * thumbRect.height,
+          trackRect.height - 0.5 * thumbRect.height,
+        ),
+      };
+    },
+    [track],
+  );
 
   const getNormalizedPosition = useCallback((): XY => {
     if (!track.current || !thumb.current) return { x: 0, y: 0 };
@@ -116,38 +131,27 @@ const XYSlider = ({
       x: (clampedPosition.x + 0.5 * thumbRect.width) / trackRect.width,
       y: (clampedPosition.y + 0.5 * thumbRect.height) / trackRect.height,
     };
-  }, [clampPosition, position]);
-
-  const setNormalPosition = useCallback(() => {
-    if (!track.current || !thumb.current) return { x: 0, y: 0 };
-    const trackRect = track.current.getBoundingClientRect();
-    const thumbRect = thumb.current.getBoundingClientRect();
-    normalPosition.current = {
-      x: (currentPosition.current.x + 0.5 * thumbRect.width) / trackRect.width,
-      y:
-        (currentPosition.current.y + 0.5 * thumbRect.height) / trackRect.height,
-    };
-  }, []);
+  }, [track, position, clampPosition]);
 
   const getPositionFromNormalPosition = useCallback((): XY => {
     if (!track.current || !thumb.current) return { x: 0, y: 0 };
     const trackRect = track.current.getBoundingClientRect();
     const thumbRect = thumb.current.getBoundingClientRect();
     return {
-      x: normalPosition.current.x * trackRect.width - 0.5 * thumbRect.width,
-      y: normalPosition.current.y * trackRect.height - 0.5 * thumbRect.height,
+      x: normPositionRef.current.x * trackRect.width - 0.5 * thumbRect.width,
+      y: normPositionRef.current.y * trackRect.height - 0.5 * thumbRect.height,
     };
-  }, []);
+  }, [track]);
 
   const getValueFromCurrentPosition = useCallback(() => {
-    return (Object.keys(normalPosition.current) as (keyof XY)[]).reduce(
+    return (Object.keys(normPositionRef.current) as (keyof XY)[]).reduce(
       (acc, key) => {
         acc[key] =
           key === "y"
-            ? (1 - normalPosition.current[key]) *
+            ? (1 - normPositionRef.current[key]) *
                 (maxValue[key] - minValue[key]) +
               minValue[key]
-            : normalPosition.current[key] * (maxValue[key] - minValue[key]) +
+            : normPositionRef.current[key] * (maxValue[key] - minValue[key]) +
               minValue[key];
         return acc;
       },
@@ -194,50 +198,50 @@ const XYSlider = ({
       setFocused(true);
       setDragging(true);
       const thumbRect = thumb.current.getBoundingClientRect();
-      currentPosition.current = {
+      positionRef.current = {
         x: e.x - 0.5 * thumbRect.width,
         y: e.y - 0.5 * thumbRect.height,
       };
       setNormalPosition();
-      setPosition(currentPosition.current);
+      setPosition(positionRef.current);
       onChangeHandler();
     },
-    [onChangeHandler],
+    [onChangeHandler, setNormalPosition],
   );
   const onPressUp = useCallback(() => {
     doSync.current = true;
-    const clampedPosition = clampPosition(currentPosition.current);
-    currentPosition.current = clampedPosition;
+    const clampedPosition = clampPosition(positionRef.current);
+    positionRef.current = clampedPosition;
     setNormalPosition();
-    setPosition(currentPosition.current);
+    setPosition(positionRef.current);
     setDragging(false);
     onChangeEndHandler();
-  }, [clampPosition, onChangeEndHandler]);
+  }, [clampPosition, onChangeEndHandler, setNormalPosition]);
   const onMove = useCallback(
     (e: MoveMoveEvent) => {
       doSync.current = false;
       if (e.pointerType === "keyboard") {
-        const clampedPosition = clampPosition(currentPosition.current);
-        currentPosition.current = clampedPosition;
+        const clampedPosition = clampPosition(positionRef.current);
+        positionRef.current = clampedPosition;
         setNormalPosition();
       }
-      currentPosition.current.x += e.deltaX;
-      currentPosition.current.y += e.deltaY;
+      positionRef.current.x += e.deltaX;
+      positionRef.current.y += e.deltaY;
       setNormalPosition();
-      setPosition(currentPosition.current);
+      setPosition(positionRef.current);
       onChangeHandler();
     },
-    [clampPosition, onChangeHandler],
+    [clampPosition, onChangeHandler, setNormalPosition],
   );
   const onMoveEnd = useCallback(() => {
     doSync.current = true;
-    const clampedPosition = clampPosition(currentPosition.current);
-    currentPosition.current = clampedPosition;
+    const clampedPosition = clampPosition(positionRef.current);
+    positionRef.current = clampedPosition;
     setNormalPosition();
-    setPosition(currentPosition.current);
+    setPosition(positionRef.current);
     setDragging(false);
     onChangeEndHandler();
-  }, [clampPosition, onChangeEndHandler]);
+  }, [clampPosition, onChangeEndHandler, setNormalPosition]);
 
   const { hoverProps: thumbHoverProps, isHovered: thumbIsHovered } = useHover({
     onHoverStart: () => {},
@@ -253,7 +257,7 @@ const XYSlider = ({
     },
     onFocusChange: () => {},
   });
-  const { pressProps: thumbPressProps, isPressed: thumbIsPressed } = usePress({
+  const { pressProps: thumbPressProps } = usePress({
     onPress: () => {},
     onPressStart: () => {
       if (!isDisabled) setDragging(true);
@@ -283,7 +287,7 @@ const XYSlider = ({
     onHoverEnd: () => {},
     onHoverChange: () => {},
   });
-  const { pressProps: trackPressProps, isPressed: trackIsPressed } = usePress({
+  const { pressProps: trackPressProps } = usePress({
     onPress: () => {},
     onPressStart: (e) => {
       if (!isDisabled) onPressStart(e);
@@ -311,11 +315,12 @@ const XYSlider = ({
 
   useEffect(() => {
     if (!root.current) return;
+    //fix
     const onResizeHandler = (entries: ResizeObserverEntry[]) => {
       entries.forEach((anEntry) => {
         if (anEntry.target === root.current) {
-          currentPosition.current = getPositionFromNormalPosition();
-          setPosition(currentPosition.current);
+          positionRef.current = getPositionFromNormalPosition();
+          setPosition(positionRef.current);
         }
       });
     };
