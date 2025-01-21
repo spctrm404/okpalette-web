@@ -37,20 +37,16 @@ const Test = () => {
     return swatches;
   };
 
-  const checkerTileCanvasRef1 = useRef<HTMLCanvasElement>(null);
-  const checkerTileCanvasRef2 = useRef<HTMLCanvasElement>(null);
-  const checkerTileCanvasRef3 = useRef<HTMLCanvasElement>(null);
-  const checkerTileCanvasRef4 = useRef<HTMLCanvasElement>(null);
-  const checkerTileCanvasRef5 = useRef<HTMLCanvasElement>(null);
-  const checkerTileCanvasRef6 = useRef<HTMLCanvasElement>(null);
+  const checkerTileCanvasesRef = useRef<HTMLCanvasElement[]>([]);
+  const addCheckerTileCanvasesRef = useCallback((elem: HTMLCanvasElement) => {
+    checkerTileCanvasesRef.current.push(elem);
+  }, []);
 
   const drawCheckerTile = (
-    canvasRef: React.RefObject<HTMLCanvasElement>,
-    checkerTileSize: number,
+    canvas: HTMLCanvasElement,
+    tileSize: number,
     lightness: number,
   ) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const parent = canvas.parentElement;
@@ -58,34 +54,33 @@ const Test = () => {
     const { width, height } = parent.getBoundingClientRect();
     if (!width || !height) return;
 
+    const devicePixelRatio = window.devicePixelRatio || 1;
+
+    console.log("devicePixelRatio", devicePixelRatio);
+
     canvas.width = width;
     canvas.height = height;
 
     const checkerTile = (x: number, y: number) => {
+      ctx.fillRect(x, y, tileSize * lightness, tileSize * lightness);
       ctx.fillRect(
-        x,
-        y,
-        checkerTileSize * lightness,
-        checkerTileSize * lightness,
-      );
-      ctx.fillRect(
-        x - checkerTileSize * lightness,
-        y - checkerTileSize * lightness,
-        checkerTileSize * lightness,
-        checkerTileSize * lightness,
+        x - tileSize * lightness,
+        y - tileSize * lightness,
+        tileSize * lightness,
+        tileSize * lightness,
       );
     };
 
-    ctx.fillStyle = "rgb(255, 255, 255)";
+    ctx.fillStyle = "rgb(0, 0, 0)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const rowMax = Math.ceil(canvas.height / checkerTileSize);
-    const columnMax = Math.ceil(canvas.width / checkerTileSize);
-    ctx.fillStyle = "rgb(0, 0, 0)";
+    const rowMax = Math.ceil(canvas.height / tileSize);
+    const columnMax = Math.ceil(canvas.width / tileSize);
+    ctx.fillStyle = "rgb(255, 255, 255)";
     for (let row = -1; row < rowMax + 1; row++) {
-      const y = row * checkerTileSize;
+      const y = row * tileSize;
       for (let column = -1; column < columnMax + 1; column++) {
-        const x = column * checkerTileSize;
+        const x = column * tileSize;
         checkerTile(x, y);
       }
     }
@@ -94,84 +89,81 @@ const Test = () => {
   };
 
   useEffect(() => {
-    drawCheckerTile(checkerTileCanvasRef1, 2, 1);
-    drawCheckerTile(checkerTileCanvasRef2, 2, 0.5);
-    drawCheckerTile(checkerTileCanvasRef3, 2, 0);
-    drawCheckerTile(checkerTileCanvasRef4, 2, 1);
-    drawCheckerTile(checkerTileCanvasRef5, 2, 0.5);
-    drawCheckerTile(checkerTileCanvasRef6, 2, 0);
-  }, []);
-
-  const [srgb, setSrgb] = useState(0);
+    const canvases = checkerTileCanvasesRef.current;
+    canvases.forEach((aCanvas) => {
+      drawCheckerTile(
+        aCanvas,
+        Number(aCanvas.dataset.tileSize),
+        Number(aCanvas.dataset.lightness),
+      );
+    });
+  });
 
   return (
     <>
       <p>cheker</p>
       <div className={cx("palette")}>
         <div className={cx("swatch")}>
-          <canvas ref={checkerTileCanvasRef1}></canvas>
+          <canvas
+            ref={addCheckerTileCanvasesRef}
+            data-tile-size={2}
+            data-lightness={0.0}
+          ></canvas>
         </div>
-        <div className={cx("swatch")}>
-          <canvas ref={checkerTileCanvasRef2}></canvas>
-        </div>
-        <div className={cx("swatch")}>
-          <canvas ref={checkerTileCanvasRef3}></canvas>
-        </div>
-      </div>
-      <div>
-        <div
-          style={{
-            height: "88px",
-            backgroundColor: `color(srgb ${srgb} ${srgb} ${srgb})`,
-            position: "relative",
-            top: "-16px",
-          }}
-        ></div>
-        <div
-          style={{
-            height: "88px",
-            backgroundColor: `color(srgb-linear 0.5 0.5 0.5)`,
-            position: "relative",
-            top: "-16px",
-          }}
-        ></div>
-        <div>
-          <input
-            type="range"
-            value={srgb}
-            min={0}
-            max={1}
-            step={0.001}
-            onChange={(e) => {
-              setSrgb(Number(e.currentTarget.value));
+        <div className={cx("swatch")} style={{ position: "relative" }}>
+          <canvas
+            ref={addCheckerTileCanvasesRef}
+            data-tile-size={2}
+            data-lightness={0.5}
+          ></canvas>
+          <div
+            style={{
+              backgroundColor: "red",
+              position: "absolute",
+              top: "0px",
+              bottom: "0px",
+              left: "50%",
+              right: "0px",
             }}
-          />
-          <span>{srgb}</span>
+          ></div>
+        </div>
+        <div className={cx("swatch")}>
+          <canvas
+            ref={addCheckerTileCanvasesRef}
+            data-tile-size={2}
+            data-lightness={1.0}
+          ></canvas>
         </div>
       </div>
-      <p>srgb-linear</p>
-      <div className={cx("palette")}>{createSwatches("srgb-linear", 3)}</div>
       <p>cheker-blurred</p>
       <div className={cx("palette")}>
         <div className={cx("swatch")}>
           <canvas
-            ref={checkerTileCanvasRef4}
+            ref={addCheckerTileCanvasesRef}
+            data-tile-size={2}
+            data-lightness={0.0}
             style={{ filter: "blur(4px)" }}
           ></canvas>
         </div>
         <div className={cx("swatch")}>
           <canvas
-            ref={checkerTileCanvasRef5}
+            ref={addCheckerTileCanvasesRef}
+            data-tile-size={2}
+            data-lightness={0.5}
             style={{ filter: "blur(4px)" }}
           ></canvas>
         </div>
         <div className={cx("swatch")}>
           <canvas
-            ref={checkerTileCanvasRef6}
+            ref={addCheckerTileCanvasesRef}
+            data-tile-size={2}
+            data-lightness={1.0}
             style={{ filter: "blur(4px)" }}
           ></canvas>
         </div>
       </div>
+      <p>srgb-linear</p>
+      <div className={cx("palette")}>{createSwatches("srgb-linear", 3)}</div>
       <p>srgb</p>
       <div className={cx("palette")}>{createSwatches("srgb", 3)}</div>
       <p>oklch</p>
