@@ -38,9 +38,9 @@ vec3 lchToLab(vec3 lch) {
 
 vec3 oklabToLLms(vec3 oklab) {
   mat3 oklabToLms = mat3(
-     1.0         ,  0.3963377922,  0.2158037581,
-     1.0000000089, -0.1055613423, -0.0638541748,
-     1.0000000055, -0.0894841821, -1.2914855379
+     1.0         ,  0.3963377774,  0.2158037573,
+     1.0         , -0.1055613458, -0.0638541728,
+     1.0         , -0.0894841775, -1.291485548
   );
   vec3 lms = transposeMatVec(oklabToLms, oklab);
   vec3 lLms = pow(abs(lms), vec3(3.0)) * sign(lms);
@@ -51,9 +51,9 @@ vec3 oklabToLLms(vec3 oklab) {
 vec3 oklabToLSrgb(vec3 oklab) {
   vec3 lLms = oklabToLLms(oklab);
   mat3 lLmsToLrgb = mat3(
-     4.0767416613, -3.3077115904,  0.2309699287,
-    -1.268438    ,  2.6097574007, -0.3413193963,
-    -0.0041960865, -0.7034186145,  1.7076147009
+     4.0767416621, -3.3077115913,  0.2309699292,
+    -1.2684380046,  2.6097574011, -0.3413193965,
+    -0.0041960863, -0.7034186147,  1.707614701
   );
 
   return transposeMatVec(lLmsToLrgb, lLms);
@@ -62,9 +62,9 @@ vec3 oklabToLSrgb(vec3 oklab) {
 vec3 oklabToLDispP3(vec3 oklab) {
   vec3 lLms = oklabToLLms(oklab);
   mat3 lLmsToXyz = mat3(
-     1.2270138511, -0.5577999807,  0.281256149 ,
-    -0.0405801784,  1.1122568696, -0.0716766787,
-    -0.0763812845, -0.4214819784,  1.5861632204
+     1.2270138545, -0.5577999786,  0.2812561472,
+    -0.0405801842,  1.1122568713, -0.0716766766,
+    -0.0763812838, -0.421481979 ,  1.5861632225
   );
   vec3 xyz = transposeMatVec(lLmsToXyz, lLms);
   mat3 xyzToLDispP3 = mat3(
