@@ -1,3 +1,7 @@
+import {
+  mat3LinearLmsToXyz,
+  mat3OklabToNonLinearLms,
+} from "@/constants/matrices";
 import { useState } from "react";
 import { GamutGl } from "@/components/GamutGL";
 
@@ -6,6 +10,9 @@ const Home = () => {
   const [c, setC] = useState(0.2);
   const [hFrom, setHFrom] = useState(120);
   const [hTo, setHTo] = useState(240);
+
+  console.log(mat3LinearLmsToXyz);
+  console.log(mat3OklabToNonLinearLms);
 
   return (
     <>
