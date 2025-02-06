@@ -7,8 +7,11 @@ const TopNav = () => {
         <Link to="/" style={{ marginRight: "10px" }}>
           Home
         </Link>
-        <Link to="/test" style={{ marginRight: "10px" }}>
-          Test
+        <Link to="/grey-experiments" style={{ marginRight: "10px" }}>
+          Grey Experiments
+        </Link>
+        <Link to="/oklab-experiments" style={{ marginRight: "10px" }}>
+          oklab Experiments
         </Link>
       </nav>
       <main>

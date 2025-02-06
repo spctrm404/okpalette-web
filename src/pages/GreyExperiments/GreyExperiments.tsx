@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import st from "./_Test.module.scss";
+import st from "./_GreyExperiments.module.scss";
 import classNames from "classnames/bind";
 
 const cx = classNames.bind(st);
 
 type ColorSpace = "srgb" | "srgb-linear" | "display-p3" | "oklch";
 
-const Test = () => {
+const GreyExperiments = () => {
   const createSwatch = (
     key: string,
     colorSpace: ColorSpace,
@@ -186,4 +186,4 @@ const Test = () => {
   );
 };
 
-export default Test;
+export default GreyExperiments;
