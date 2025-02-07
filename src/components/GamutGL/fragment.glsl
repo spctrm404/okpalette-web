@@ -14,78 +14,55 @@ uniform float u_hMappedTo; // 0: none, 1: x, 2: y, 3: xy
 uniform float u_hFlipped; // 0: none, 1: x, 2: y, 3: xy
 uniform float u_hFrom;
 uniform float u_hTo;
-uniform float u_gamut; // 0: sRGB, 1: Display P3
+uniform float u_gamut; // 0: srgb, 1: displayP3
+
+uniform mat3 u_OKLAB_TO_NON_LINEAR_LMS;
+uniform mat3 u_LINEAR_LMS_TO_XYZ;
+uniform mat3 u_XYZ_TO_LINEAR_SRGB;
+uniform mat3 u_XYZ_TO_LINEAR_DISPLAY_P3;
 
 out vec4 outColor;
 
-const float PI = 3.1415926536;
-const float DEG2RAD = PI / 180.0;
-const float GAMUT_DISPP3 = 1.0;
+const float PI = 3.1415927;
+const float DEGREES_TO_RADIANS = PI / 180.0;
+const float GAMUT_DISPLAY_P3 = 1.0;
 
 float isInGamut(vec3 v) {
-  float minValue = min(v.x, min(v.y, v.z));
-  float maxValue = max(v.x, max(v.y, v.z));
-  return step(0.0, minValue) * step(maxValue, 1.0);
-}
-
-vec3 transposeMatVec(mat3 m, vec3 v) {
-  return vec3(dot(v, m[0]), dot(v, m[1]), dot(v, m[2]));
+  float minVal = min(v.x, min(v.y, v.z));
+  float maxVal = max(v.x, max(v.y, v.z));
+  return step(0.0, minVal) * step(maxVal, 1.0);
 }
 
 vec3 lchToLab(vec3 lch) {
   return vec3(lch.x, lch.y * cos(lch.z), lch.y * sin(lch.z));
 }
 
-vec3 oklabToLLms(vec3 oklab) {
-  mat3 oklabToLms = mat3(
-     1.0         ,  0.3963377774,  0.2158037573,
-     1.0         , -0.1055613458, -0.0638541728,
-     1.0         , -0.0894841775, -1.291485548
-  );
-  vec3 lms = transposeMatVec(oklabToLms, oklab);
-  vec3 lLms = pow(abs(lms), vec3(3.0)) * sign(lms);
+vec3 oklabToXyz(vec3 oklab) {
+  vec3 nonLinearLms = u_OKLAB_TO_NON_LINEAR_LMS * oklab;
+  vec3 linearLms = pow(abs(nonLinearLms), vec3(3.0)) * sign(nonLinearLms);
 
-  return lLms;
+  return u_LINEAR_LMS_TO_XYZ * linearLms;
 }
 
-vec3 oklabToLSrgb(vec3 oklab) {
-  vec3 lLms = oklabToLLms(oklab);
-  mat3 lLmsToLrgb = mat3(
-     4.0767416621, -3.3077115913,  0.2309699292,
-    -1.2684380046,  2.6097574011, -0.3413193965,
-    -0.0041960863, -0.7034186147,  1.707614701
-  );
+vec3 oklabToLinearSrgb(vec3 oklab) {
+  vec3 xyz = oklabToXyz(oklab);
 
-  return transposeMatVec(lLmsToLrgb, lLms);
+  return u_XYZ_TO_LINEAR_SRGB * xyz;
 }
 
-vec3 oklabToLDispP3(vec3 oklab) {
-  vec3 lLms = oklabToLLms(oklab);
-  mat3 lLmsToXyz = mat3(
-     1.2270138545, -0.5577999786,  0.2812561472,
-    -0.0405801842,  1.1122568713, -0.0716766766,
-    -0.0763812838, -0.421481979 ,  1.5861632225
-  );
-  vec3 xyz = transposeMatVec(lLmsToXyz, lLms);
-  mat3 xyzToLDispP3 = mat3(
-     2.4934969119, -0.9313836179, -0.4027107845,
-    -0.8294889696,  1.7626640603,  0.0236246858,
-     0.0358458302, -0.0761723893,  0.956884524
-  );
+vec3 oklabToLinearDisplayP3(vec3 oklab) {
+  vec3 xyz = oklabToXyz(oklab);
 
-  return transposeMatVec(xyzToLDispP3, xyz);
+  return u_XYZ_TO_LINEAR_DISPLAY_P3 * xyz;
 }
 
-vec3 linearToNonLinear(vec3 rgb) {
-  vec3 absRgb = abs(rgb);
-  vec3 signRgb = sign(rgb);
-  vec3 threshold = vec3(0.0031308);
+vec3 toNonLinearRgb(vec3 rgb) {
+  vec3 sign = sign(rgb);
+  vec3 abs = abs(rgb);
+  vec3 nonlinear = sign * (1.055 * pow(abs, vec3(1.0 / 2.4)) - 0.055);
+  vec3 linear = 12.92 * rgb;
 
-  vec3 belowThreshold = rgb * 12.92;
-  vec3 aboveThreshold =
-    signRgb * (1.055 * pow(absRgb, vec3(1.0 / 2.4)) - 0.055);
-
-  return mix(belowThreshold, aboveThreshold, step(threshold, absRgb));
+  return mix(linear, nonlinear, step(0.0031308, abs));
 }
 
 float axisMap(float mappedTo, float flipped, float from, float to, vec2 coord) {
@@ -119,18 +96,18 @@ void main() {
   float hTo = mix(u_hTo + 360.0, u_hTo, step(u_hFrom, u_hTo));
   float hDeg = axisMap(u_hMappedTo, u_hFlipped, u_hFrom, hTo, coord);
   hDeg = mod(hDeg, 360.0);
-  float h = hDeg * DEG2RAD;
+  float h = hDeg * DEGREES_TO_RADIANS;
 
   vec3 oklch = vec3(l, c, h);
   vec3 oklab = lchToLab(oklch);
 
-  vec3 lSrgb = oklabToLSrgb(oklab);
-  vec3 srgb = linearToNonLinear(lSrgb);
-  vec3 lDispP3 = oklabToLDispP3(oklab);
-  vec3 dispP3 = linearToNonLinear(lDispP3);
+  vec3 linearSrgb = oklabToLinearSrgb(oklab);
+  vec3 nonLinearSrgb = toNonLinearRgb(linearSrgb);
+  vec3 linearDisplayP3 = oklabToLinearDisplayP3(oklab);
+  vec3 nonLinearDisplayP3 = toNonLinearRgb(linearDisplayP3);
 
-  float inSrgb = isInGamut(lSrgb);
-  float inDispP3 = isInGamut(lDispP3);
+  float inSrgb = isInGamut(linearSrgb);
+  float inDisplayP3 = isInGamut(linearDisplayP3);
 
   // Expanded neighbor pixel offsets for 3-pixel radius
   vec2 offsets[24] = vec2[](
@@ -188,26 +165,26 @@ void main() {
       hTo,
       neighborCoord
     );
-    neighborH = mod(neighborH, 360.0) * DEG2RAD;
+    neighborH = mod(neighborH, 360.0) * DEGREES_TO_RADIANS;
 
     vec3 neighborOklch = vec3(neighborL, neighborC, neighborH);
     vec3 neighborOklab = lchToLab(neighborOklch);
-    vec3 neighborLSrgb = oklabToLSrgb(neighborOklab);
-    float neighborInSrgb = isInGamut(neighborLSrgb);
+    vec3 neighborLinearSrgb = oklabToLinearSrgb(neighborOklab);
+    float neighborInSrgb = isInGamut(neighborLinearSrgb);
 
     // Boundary detection: current in P3 but not in sRGB, and neighbor in sRGB
-    isBoundary += step(0.5, inDispP3) * (1.0 - inSrgb) * neighborInSrgb;
+    isBoundary += step(0.5, inDisplayP3) * (1.0 - inSrgb) * neighborInSrgb;
   }
 
   isBoundary = step(0.5, isBoundary); // If any neighbor is in sRGB, mark as boundary
 
   outColor = mix(
-    mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(srgb, 1.0), step(1.0, inSrgb)),
+    mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(nonLinearSrgb, 1.0), step(1.0, inSrgb)),
     mix(
       vec4(0.0, 0.0, 0.0, 0.0),
-      vec4(dispP3, 1.0 - isBoundary),
-      step(1.0, inDispP3)
+      vec4(nonLinearDisplayP3, 1.0 - isBoundary),
+      step(1.0, inDisplayP3)
     ),
-    step(GAMUT_DISPP3, u_gamut)
+    step(GAMUT_DISPLAY_P3, u_gamut)
   );
 }

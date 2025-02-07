@@ -1,4 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
+import {
+  OKLAB_TO_NON_LINEAR_LMS,
+  LINEAR_LMS_TO_XYZ,
+  XYZ_TO_LINEAR_SRGB,
+  XYZ_TO_LINEAR_DISPLAY_P3,
+  mat3ToGlslMat3,
+} from "@/oklab";
 import vertex from "./vertex.glsl";
 import fragment from "./fragment.glsl";
 import st from "./_GamutGl.module.scss";
@@ -144,6 +151,27 @@ const GamutGl = ({
     const positionAttribLocation = gl.getAttribLocation(program, "a_position");
     gl.enableVertexAttribArray(positionAttribLocation);
     gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniformMatrix3fv(
+      gl.getUniformLocation(program!, "u_OKLAB_TO_NON_LINEAR_LMS"),
+      false,
+      mat3ToGlslMat3(OKLAB_TO_NON_LINEAR_LMS),
+    );
+    gl.uniformMatrix3fv(
+      gl.getUniformLocation(program!, "u_LINEAR_LMS_TO_XYZ"),
+      false,
+      mat3ToGlslMat3(LINEAR_LMS_TO_XYZ),
+    );
+    gl.uniformMatrix3fv(
+      gl.getUniformLocation(program!, "u_XYZ_TO_LINEAR_SRGB"),
+      false,
+      mat3ToGlslMat3(XYZ_TO_LINEAR_SRGB),
+    );
+    gl.uniformMatrix3fv(
+      gl.getUniformLocation(program!, "u_XYZ_TO_LINEAR_DISPLAY_P3"),
+      false,
+      mat3ToGlslMat3(XYZ_TO_LINEAR_DISPLAY_P3),
+    );
   }, []);
 
   // Update uniforms and render
@@ -174,6 +202,14 @@ const GamutGl = ({
       canvas.style.height = `${height}px`;
 
       gl.viewport(0, 0, canvas.width, canvas.height);
+
+      const program = gl.getParameter(gl.CURRENT_PROGRAM);
+      gl.uniform2f(
+        gl.getUniformLocation(program!, "u_resolution"),
+        gl.canvas.width,
+        gl.canvas.height,
+      );
+
       render(gl);
     };
 

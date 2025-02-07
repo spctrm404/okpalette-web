@@ -1,13 +1,13 @@
 import type { Vec3 } from "./types";
 import {
   OKLAB_TO_NON_LINEAR_LMS,
+  NON_LINEAR_LMS_TO_OKLAB,
   LINEAR_LMS_TO_XYZ,
   XYZ_TO_LINEAR_LMS,
-  NON_LINEAR_LMS_TO_OKLAB,
   XYZ_TO_LINEAR_SRGB,
-  XYZ_TO_LINEAR_P3,
   LINEAR_SRGB_TO_XYZ,
-  LINEAR_P3_TO_XYZ,
+  XYZ_TO_LINEAR_DISPLAY_P3,
+  LINEAR_DISPLAY_P3_TO_XYZ,
 } from "./constants";
 import { multMat3Vec3 } from "./utils";
 
@@ -54,7 +54,7 @@ export const labToLch = (lab: Vec3): Vec3 => {
 };
 
 // OKLCH->SRGB
-// oklab -> oklch -> lms -> xyz -> srgb
+// oklch -> oklab -> lms -> xyz -> srgb
 export const oklchToLinearSrgb = (oklch: Vec3): Vec3 => {
   const oklab = lchToLab(oklch);
   const nonLinearLms = multMat3Vec3(OKLAB_TO_NON_LINEAR_LMS, oklab);
@@ -79,26 +79,26 @@ export const srgbToOklch = (rgb: Vec3): Vec3 => {
 };
 
 // OKLCH->DISPLAY-P3
-// oklab -> oklch -> lms -> xyz -> displayP3
-export const oklchToLinearDisplayP3 = (oklch: Vec3): Vec3 => {
+// oklch -> oklab -> lms -> xyz -> displayp3
+export const oklchToLinearDisplayp3 = (oklch: Vec3): Vec3 => {
   const oklab = lchToLab(oklch);
   const nonLinearLms = multMat3Vec3(OKLAB_TO_NON_LINEAR_LMS, oklab);
   const linearLms = toLinearLms(nonLinearLms);
   const xyz = multMat3Vec3(LINEAR_LMS_TO_XYZ, linearLms);
-  return multMat3Vec3(XYZ_TO_LINEAR_P3, xyz);
+  return multMat3Vec3(XYZ_TO_LINEAR_DISPLAY_P3, xyz);
 };
-export const oklchToDisplayP3 = (oklch: Vec3): Vec3 => {
-  return toNonLinearRgb(oklchToLinearDisplayP3(oklch));
+export const oklchToDisplayp3 = (oklch: Vec3): Vec3 => {
+  return toNonLinearRgb(oklchToLinearDisplayp3(oklch));
 };
 // DISPLAY-P3->OKLCH
-// displayP3 -> xyz -> lms -> oklab -> oklch
-export const displayP3ToOklab = (rgb: Vec3): Vec3 => {
+// displayp3 -> xyz -> lms -> oklab -> oklch
+export const displayp3ToOklab = (rgb: Vec3): Vec3 => {
   const linearRgb = toLinearRgb(rgb);
-  const xyz = multMat3Vec3(LINEAR_P3_TO_XYZ, linearRgb);
+  const xyz = multMat3Vec3(LINEAR_DISPLAY_P3_TO_XYZ, linearRgb);
   const linearLms = multMat3Vec3(XYZ_TO_LINEAR_LMS, xyz);
   const nonLinearLms = toNonLinearLms(linearLms);
   return multMat3Vec3(NON_LINEAR_LMS_TO_OKLAB, nonLinearLms);
 };
-export const displayP3ToOklch = (rgb: Vec3): Vec3 => {
-  return labToLch(displayP3ToOklab(rgb));
+export const displayp3ToOklch = (rgb: Vec3): Vec3 => {
+  return labToLch(displayp3ToOklab(rgb));
 };
