@@ -26,17 +26,53 @@ out vec4 outColor;
 const float PI = 3.1415927;
 const float DEGREES_TO_RADIANS = PI / 180.0;
 const float GAMUT_DISPLAY_P3 = 1.0;
+const int NEIGHBORS_NUM = 24;
+const vec2 NEIGHBORS_OFFSET[NEIGHBORS_NUM] = vec2[](
+  // Radius 1
+  vec2(0.0, 1.0),
+  vec2(1.0, 0.0),
+  vec2(0.0, -1.0),
+  vec2(-1.0, 0.0),
+  // Radius 2
+  vec2(0.0, 2.0),
+  vec2(2.0, 0.0),
+  vec2(0.0, -2.0),
+  vec2(-2.0, 0.0),
+  vec2(1.0, 1.0),
+  vec2(-1.0, 1.0),
+  vec2(1.0, -1.0),
+  vec2(-1.0, -1.0),
+  // Radius 3
+  vec2(0.0, 3.0),
+  vec2(3.0, 0.0),
+  vec2(0.0, -3.0),
+  vec2(-3.0, 0.0),
+  vec2(2.0, 1.0),
+  vec2(1.0, 2.0),
+  vec2(-2.0, 1.0),
+  vec2(-1.0, 2.0),
+  vec2(2.0, -1.0),
+  vec2(1.0, -2.0),
+  vec2(-2.0, -1.0),
+  vec2(-1.0, -2.0)
+);
 
 float isInGamut(vec3 v) {
-  float minVal = min(v.x, min(v.y, v.z));
-  float maxVal = max(v.x, max(v.y, v.z));
-  return step(0.0, minVal) * step(maxVal, 1.0);
+  // if both are 1.0, v is in [0, 1]
+  vec3 check =
+    // step(0.0, v) returns 1.0 if v >= 0.0, 0.0 if v < 0.0
+    step(vec3(0.0), v) *
+    // step(v, 1.0) returns 1.0 if v <= 1.0, 0.0 if v > 1.0
+    step(v, vec3(1.0));
+  return check.x * check.y * check.z;
 }
 
+//cylindrical to cartesian coordinates
 vec3 lchToLab(vec3 lch) {
   return vec3(lch.x, lch.y * cos(lch.z), lch.y * sin(lch.z));
 }
 
+// lab -> non-linear lms -> linaer lms -> xyz
 vec3 oklabToXyz(vec3 oklab) {
   vec3 nonLinearLms = u_OKLAB_TO_NON_LINEAR_LMS * oklab;
   vec3 linearLms = pow(abs(nonLinearLms), vec3(3.0)) * sign(nonLinearLms);
@@ -44,15 +80,10 @@ vec3 oklabToXyz(vec3 oklab) {
   return u_LINEAR_LMS_TO_XYZ * linearLms;
 }
 
-vec3 oklabToLinearSrgb(vec3 oklab) {
-  vec3 xyz = oklabToXyz(oklab);
-
+vec3 xyzToLinearSrgb(vec3 xyz) {
   return u_XYZ_TO_LINEAR_SRGB * xyz;
 }
-
-vec3 oklabToLinearDisplayP3(vec3 oklab) {
-  vec3 xyz = oklabToXyz(oklab);
-
+vec3 xyzToLinearDisplayP3(vec3 xyz) {
   return u_XYZ_TO_LINEAR_DISPLAY_P3 * xyz;
 }
 
@@ -66,23 +97,27 @@ vec3 toNonLinearRgb(vec3 rgb) {
 }
 
 float axisMap(float mappedTo, float flipped, float from, float to, vec2 coord) {
-  float mappedCoord = mix(
-    0.0,
-    mix(coord.x, 1.0 - coord.x, step(1.0, flipped) + step(3.0, flipped)),
-    step(1.0, mappedTo)
-  ); // if(mappedTo < 1.0) 0
+  // 0 -> (0, 0)
+  // 1 -> (1, 0)
+  // 2 -> (0, 1)
+  // 3 -> (1, 1)
+  vec2 flipMask =
+    step(vec2(1.0, 2.0), vec2(flipped)) + step(vec2(3.0), vec2(flipped));
+  flipMask = min(flipMask, vec2(1.0));
+
+  vec2 flippedCoord = mix(coord, 1.0 - coord, flipMask);
+
+  // if (mappedTo < 1.0) mappedCoord = 0.0
+  // if (mappedTo >= 1.0) mappedCoord = flippedCoord.x
+  float mappedCoord = mix(0.0, flippedCoord.x, step(1.0, mappedTo));
+  // if (mappedTo >= 2.0) mappedCoord = flippedCoord.y
+  mappedCoord = mix(mappedCoord, flippedCoord.y, step(2.0, mappedTo));
+  // if (mappedTo >= 3.0) mappedCoord = (flippedCoord.x + flippedCoord.y) / 2.0
   mappedCoord = mix(
     mappedCoord,
-    mix(coord.y, 1.0 - coord.y, step(2.0, flipped) + step(3.0, flipped)),
-    step(2.0, mappedTo)
-  ); // if(mappedTo < 2.0) x
-  mappedCoord = mix(
-    mappedCoord,
-    mix(coord.x, 1.0 - coord.x, step(1.0, flipped) + step(3.0, flipped)) +
-      mix(coord.y, 1.0 - coord.y, step(2.0, flipped) + step(3.0, flipped)) /
-        2.0,
+    (flippedCoord.x + flippedCoord.y) * 0.5,
     step(3.0, mappedTo)
-  ); // if(mappedTo < 3.0) y, if(mappedTo >= 3.0) x+y/2
+  );
 
   return mix(from, to, mappedCoord);
 }
@@ -90,101 +125,53 @@ float axisMap(float mappedTo, float flipped, float from, float to, vec2 coord) {
 void main() {
   vec2 coord = gl_FragCoord.xy / u_resolution;
 
-  float l = axisMap(u_lMappedTo, u_lFlipped, u_lFrom, u_lTo, coord);
-  float c = axisMap(u_cMappedTo, u_cFlipped, u_cFrom, u_cTo, coord);
+  vec3 oklch = vec3(
+    axisMap(u_lMappedTo, u_lFlipped, u_lFrom, u_lTo, coord),
+    axisMap(u_cMappedTo, u_cFlipped, u_cFrom, u_cTo, coord),
+    axisMap(u_hMappedTo, u_hFlipped, u_hFrom, u_hTo, coord)
+  );
+  oklch.z =
+    mod(mix(oklch.z, oklch.z + 360.0, step(u_hTo, u_hFrom)), 360.0) *
+    DEGREES_TO_RADIANS;
 
-  float hTo = mix(u_hTo + 360.0, u_hTo, step(u_hFrom, u_hTo));
-  float hDeg = axisMap(u_hMappedTo, u_hFlipped, u_hFrom, hTo, coord);
-  hDeg = mod(hDeg, 360.0);
-  float h = hDeg * DEGREES_TO_RADIANS;
-
-  vec3 oklch = vec3(l, c, h);
   vec3 oklab = lchToLab(oklch);
+  vec3 xyz = oklabToXyz(oklab);
 
-  vec3 linearSrgb = oklabToLinearSrgb(oklab);
+  vec3 linearSrgb = xyzToLinearSrgb(xyz);
+  vec3 linearDisplayP3 = xyzToLinearDisplayP3(xyz);
+
   vec3 nonLinearSrgb = toNonLinearRgb(linearSrgb);
-  vec3 linearDisplayP3 = oklabToLinearDisplayP3(oklab);
   vec3 nonLinearDisplayP3 = toNonLinearRgb(linearDisplayP3);
 
   float inSrgb = isInGamut(linearSrgb);
   float inDisplayP3 = isInGamut(linearDisplayP3);
 
-  // Expanded neighbor pixel offsets for 3-pixel radius
-  vec2 offsets[24] = vec2[](
-    // Radius 1
-    vec2(0.0, 1.0),
-    vec2(1.0, 0.0),
-    vec2(0.0, -1.0),
-    vec2(-1.0, 0.0),
-    // Radius 2
-    vec2(0.0, 2.0),
-    vec2(2.0, 0.0),
-    vec2(0.0, -2.0),
-    vec2(-2.0, 0.0),
-    vec2(1.0, 1.0),
-    vec2(-1.0, 1.0),
-    vec2(1.0, -1.0),
-    vec2(-1.0, -1.0),
-    // Radius 3
-    vec2(0.0, 3.0),
-    vec2(3.0, 0.0),
-    vec2(0.0, -3.0),
-    vec2(-3.0, 0.0),
-    vec2(2.0, 1.0),
-    vec2(1.0, 2.0),
-    vec2(-2.0, 1.0),
-    vec2(-1.0, 2.0),
-    vec2(2.0, -1.0),
-    vec2(1.0, -2.0),
-    vec2(-2.0, -1.0),
-    vec2(-1.0, -2.0)
-  );
-
-  // Check neighbors for sRGB inclusion
+  // check if the pixel is a boundary
+  // if the pixel is in display-p3 but not in srgb, and any of the neighbors is in srgb, it is a boundary
   float isBoundary = 0.0;
-  for (int i = 0; i < 24; i++) {
-    vec2 neighborCoord = coord + offsets[i] / u_resolution;
-    float neighborL = axisMap(
-      u_lMappedTo,
-      u_lFlipped,
-      u_lFrom,
-      u_lTo,
-      neighborCoord
+  for (int i = 0; i < NEIGHBORS_NUM; i++) {
+    vec2 neighborCoord = coord + NEIGHBORS_OFFSET[i] / u_resolution;
+    vec3 neighborLch = vec3(
+      axisMap(u_lMappedTo, u_lFlipped, u_lFrom, u_lTo, neighborCoord),
+      axisMap(u_cMappedTo, u_cFlipped, u_cFrom, u_cTo, neighborCoord),
+      axisMap(u_hMappedTo, u_hFlipped, u_hFrom, u_hTo, neighborCoord)
     );
-    float neighborC = axisMap(
-      u_cMappedTo,
-      u_cFlipped,
-      u_cFrom,
-      u_cTo,
-      neighborCoord
-    );
-    float neighborH = axisMap(
-      u_hMappedTo,
-      u_hFlipped,
-      u_hFrom,
-      hTo,
-      neighborCoord
-    );
-    neighborH = mod(neighborH, 360.0) * DEGREES_TO_RADIANS;
+    neighborLch.z = mod(neighborLch.z, 360.0) * DEGREES_TO_RADIANS;
+    vec3 neighborOklab = lchToLab(neighborLch);
+    vec3 neighborXyz = oklabToXyz(neighborOklab);
+    vec3 neighborLinearSrgb = xyzToLinearSrgb(neighborXyz);
 
-    vec3 neighborOklch = vec3(neighborL, neighborC, neighborH);
-    vec3 neighborOklab = lchToLab(neighborOklch);
-    vec3 neighborLinearSrgb = oklabToLinearSrgb(neighborOklab);
+    // Check if the neighbor is in the sRGB gamut
     float neighborInSrgb = isInGamut(neighborLinearSrgb);
-
-    // Boundary detection: current in P3 but not in sRGB, and neighbor in sRGB
+    // if current pixel is in display-p3 but not in srgb, and the neighbor is in srgb, it is a boundary
     isBoundary += step(0.5, inDisplayP3) * (1.0 - inSrgb) * neighborInSrgb;
   }
+  isBoundary = step(1.0, isBoundary);
 
-  isBoundary = step(0.5, isBoundary); // If any neighbor is in sRGB, mark as boundary
-
-  outColor = mix(
-    mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(nonLinearSrgb, 1.0), step(1.0, inSrgb)),
-    mix(
-      vec4(0.0, 0.0, 0.0, 0.0),
-      vec4(nonLinearDisplayP3, 1.0 - isBoundary),
-      step(1.0, inDisplayP3)
-    ),
-    step(GAMUT_DISPLAY_P3, u_gamut)
+  vec4 srgbColor = vec4(nonLinearSrgb, inSrgb);
+  vec4 displayP3Color = vec4(
+    nonLinearDisplayP3,
+    (1.0 - isBoundary) * inDisplayP3
   );
+  outColor = mix(srgbColor, displayP3Color, step(GAMUT_DISPLAY_P3, u_gamut));
 }

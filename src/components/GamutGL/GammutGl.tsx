@@ -48,11 +48,12 @@ const GamutGl = ({
   cMapping = { mappedTo: "y", flipped: "none", from: 0, to: 0.4 },
   hMapping = { mappedTo: "x", flipped: "none", from: 0, to: 360 },
   gamut = "displayP3",
-  resolutionMultiplier = 4,
+  resolutionMultiplier = 2,
   ...props
 }: GamutGlProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const programRef = useRef<WebGLProgram | null>(null);
   const positionBufferRef = useRef<WebGLBuffer | null>(null);
 
@@ -106,23 +107,18 @@ const GamutGl = ({
     [memoizedLMapping, memoizedCMapping, memoizedHMapping, gamut],
   );
 
-  const checkGlError = (gl: WebGL2RenderingContext) => {
+  const checkGlError = useCallback((gl: WebGL2RenderingContext) => {
     const error = gl.getError();
     if (error !== gl.NO_ERROR) console.error("WebGL Error:", error);
-  };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const container = containerRef.current;
-    if (!canvas || !container) return;
-
+    if (!container) return;
     const gl = canvas.getContext("webgl2");
     if (!gl) return;
-
-    gl.clearColor(0, 0, 0, 0);
-    gl.disable(gl.DEPTH_TEST);
-    gl.disable(gl.BLEND);
-    checkGlError(gl);
 
     const createShader = (
       gl: WebGL2RenderingContext,
@@ -144,7 +140,6 @@ const GamutGl = ({
 
       return shader;
     };
-
     const createProgram = (
       gl: WebGL2RenderingContext,
       vertexShader: WebGLShader,
@@ -167,10 +162,15 @@ const GamutGl = ({
       return program;
     };
 
-    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex);
-    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment);
-    if (!vertexShader || !fragmentShader) return;
+    gl.clearColor(0, 0, 0, 0);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    checkGlError(gl);
 
+    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex);
+    if (!vertexShader) return;
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment);
+    if (!fragmentShader) return;
     const program = createProgram(gl, vertexShader, fragmentShader);
     if (!program) {
       gl.deleteShader(vertexShader);
@@ -180,12 +180,15 @@ const GamutGl = ({
 
     if (programRef.current) gl.deleteProgram(programRef.current);
     programRef.current = program;
+
     gl.useProgram(programRef.current);
     gl.deleteShader(vertexShader);
     gl.deleteShader(fragmentShader);
 
     const positionBuffer = gl.createBuffer();
+    if (positionBufferRef.current) gl.deleteBuffer(positionBufferRef.current);
     positionBufferRef.current = positionBuffer;
+
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     const vertices = new Float32Array([
       -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0,
@@ -199,7 +202,7 @@ const GamutGl = ({
     gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
     gl.uniform2f(
-      gl.getUniformLocation(program, "u_resolution"),
+      gl.getUniformLocation(programRef.current, "u_resolution"),
       gl.canvas.width,
       gl.canvas.height,
     );
@@ -224,15 +227,17 @@ const GamutGl = ({
         positionBufferRef.current = null;
       }
     };
-  }, []);
+  }, [checkGlError]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const container = containerRef.current;
-    if (!canvas || !container) return;
-
+    if (!container) return;
     const gl = canvas.getContext("webgl2");
     if (!gl) return;
+    const program = programRef.current;
+    if (!program) return;
 
     const resizeCanvas = () => {
       const { width, height } = container.getBoundingClientRect();
@@ -244,13 +249,8 @@ const GamutGl = ({
       canvas.width = newWidth;
       canvas.height = newHeight;
       gl.viewport(0, 0, canvas.width, canvas.height);
-      if (programRef.current) {
-        const resolutionLoc = gl.getUniformLocation(
-          programRef.current,
-          "u_resolution",
-        );
-        gl.uniform2f(resolutionLoc, gl.canvas.width, gl.canvas.height);
-      }
+      const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
+      gl.uniform2f(resolutionLoc, gl.canvas.width, gl.canvas.height);
       render(gl);
       checkGlError(gl);
     };
@@ -263,23 +263,20 @@ const GamutGl = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [resolutionMultiplier, render]);
+  }, [resolutionMultiplier, render, checkGlError]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const gl = canvas.getContext("webgl2");
     if (!gl) return;
-
     const program = programRef.current;
     if (!program) return;
 
     updateUniforms(gl, program);
     render(gl);
-
     checkGlError(gl);
-  }, [render, updateUniforms]);
+  }, [render, updateUniforms, checkGlError]);
 
   return (
     <div
