@@ -13,6 +13,9 @@ const TopNav = () => {
         <Link to="/oklab-experiments" style={{ marginRight: "10px" }}>
           oklab Experiments
         </Link>
+        <Link to="/xyslider-test" style={{ marginRight: "10px" }}>
+          xyslider Test
+        </Link>
       </nav>
       <main>
         <Outlet />
