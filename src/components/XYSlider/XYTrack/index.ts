@@ -1,2 +1,4 @@
-export { default as XYTrack } from "./XYTrack";
-export { default as XYTrackContext } from "./XYTrackContext";
+export type { XYTrackProps } from "./XYTrack";
+export type { XYTrackContextType } from "./XYTrackContext";
+export { XYTrack } from "./XYTrack";
+export { XYTrackContext, useXYTrackContext } from "./XYTrackContext";

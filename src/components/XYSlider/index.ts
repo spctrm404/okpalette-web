@@ -1,2 +1,4 @@
-export { default as XYThumb } from "./XYThumb/XYThumb";
-export { default as XYTrack } from "./XYTrack/XYTrack";
+export type { XYTrackProps, XYTrackContextType } from "./XYTrack";
+export type { XYThumbProps } from "./XYThumb";
+export { XYTrack, XYTrackContext, useXYTrackContext } from "./XYTrack";
+export { XYThumb } from "./XYThumb";
