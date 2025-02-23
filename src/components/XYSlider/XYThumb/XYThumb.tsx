@@ -1,3 +1,7 @@
+// todo: constraint func
+// todo: touch situ
+
+import type { XY } from "../index";
 import {
   useCallback,
   useContext,
@@ -10,12 +14,12 @@ import { XYTrackContext } from "../XYTrack";
 import { mergeProps, useFocus, useHover, useMove, usePress } from "react-aria";
 
 export type XYThumbProps = {
-  minValue?: { x: number; y: number };
-  maxValue?: { x: number; y: number };
-  step?: { x: number; y: number };
-  value: { x: number; y: number };
-  defaultValue?: { x: number; y: number };
-  onChange?: (value: { x: number; y: number }) => void;
+  minValue?: XY;
+  maxValue?: XY;
+  step?: XY;
+  value: XY;
+  defaultValue?: XY;
+  onChange?: (value: XY) => void;
 };
 
 export const XYThumb = ({
@@ -28,63 +32,72 @@ export const XYThumb = ({
 }: XYThumbProps) => {
   const { trackSize, thumbSize } = useContext(XYTrackContext);
 
-  const memoizedValToNormPos = useMemo(() => {
+  const memoizedNormPosFromVal = useMemo(() => {
     return {
       x: (value.x - minValue.x) / (maxValue.x - minValue.x),
       y: (value.y - minValue.y) / (maxValue.y - minValue.y),
     };
   }, [value.x, value.y, minValue.x, minValue.y, maxValue.x, maxValue.y]);
-  const memoizedValToPxPos = useMemo(() => {
-    const { x, y } = memoizedValToNormPos;
+  const memoizedPxPosFromVal = useMemo(() => {
+    const { x, y } = memoizedNormPosFromVal;
     return {
       x: x * trackSize.width,
       y: y * trackSize.height,
     };
-  }, [memoizedValToNormPos, trackSize.width, trackSize.height]);
+  }, [memoizedNormPosFromVal, trackSize.width, trackSize.height]);
 
   const updateFlagRef = useRef(true);
-  const [normPosition, setNormPosition] = useState(memoizedValToNormPos);
-  const pixelPositionRef = useRef(memoizedValToPxPos);
+  const [normPos, setNormPos] = useState(memoizedNormPosFromVal);
+  const pxPosRef = useRef(memoizedPxPosFromVal);
 
   useEffect(() => {
     if (!updateFlagRef.current) return;
 
-    setNormPosition(memoizedValToNormPos);
-    pixelPositionRef.current = memoizedValToPxPos;
+    // console.log("useEffect1");
+    setNormPos(memoizedNormPosFromVal);
     updateFlagRef.current = false;
-  }, [memoizedValToNormPos]);
+  }, [memoizedNormPosFromVal.x, memoizedNormPosFromVal.y]);
   useEffect(() => {
-    pixelPositionRef.current = memoizedValToPxPos;
-  }, [trackSize]);
+    // console.log("useEffect2");
+    pxPosRef.current = memoizedPxPosFromVal;
+  }, [trackSize.width, trackSize.height]);
 
-  const memoizedPxPosToNormPos = useMemo(() => {
-    return {
-      x: pixelPositionRef.current.x / trackSize.width,
-      y: pixelPositionRef.current.y / trackSize.height,
-    };
-  }, [pixelPositionRef.current.x, pixelPositionRef.current.y, trackSize]);
-  const pixelPositionToValue = useMemo(() => {
-    const { x, y } = memoizedPxPosToNormPos;
-    return {
-      // x:
-      //   (pixelPositionRef.current.x / trackSize.width) *
-      //     (maxValue.x - minValue.x) +
-      //   minValue.x,
-      // y:
-      //   (pixelPositionRef.current.y / trackSize.height) *
-      //     (maxValue.y - minValue.y) +
-      //   minValue.y,
-      x: x * (maxValue.x - minValue.x) + minValue.x,
-      y: y * (maxValue.y - minValue.y) + minValue.y,
-    };
-  }, [memoizedPxPosToNormPos, minValue.x, minValue.y, maxValue.x, maxValue.y]);
+  const getNormPosFromPxPos = useCallback(
+    (pxPos: XY) => {
+      return {
+        x: pxPos.x / trackSize.width,
+        y: pxPos.y / trackSize.height,
+      };
+    },
+    [trackSize.width, trackSize.height],
+  );
 
-  const clamp = (pos: number, dir: "x" | "y") => {
-    return Math.min(
-      Math.max(pos, 0),
-      dir === "x" ? trackSize.width : trackSize.height,
-    );
-  };
+  const clampPx = useCallback(
+    (pos: number, dir: "x" | "y") => {
+      return Math.min(
+        Math.max(pos, 0),
+        dir === "x" ? trackSize.width : trackSize.height,
+      );
+    },
+    [trackSize.width, trackSize.height],
+  );
+  const clampNorm = useCallback(
+    (pos: XY) =>
+      Object.fromEntries(
+        Object.entries(pos).map(([k, v]) => [k, Math.min(1, Math.max(0, v))]),
+      ) as XY,
+    [],
+  );
+
+  const getValueFromNormPos = useCallback(
+    (normPos: XY) => {
+      return {
+        x: normPos.x * (maxValue.x - minValue.x) + minValue.x,
+        y: normPos.y * (maxValue.y - minValue.y) + minValue.y,
+      };
+    },
+    [minValue.x, minValue.y, maxValue.x, maxValue.y],
+  );
 
   const { focusProps } = useFocus({
     onFocus: (e) => {},
@@ -100,57 +113,58 @@ export const XYThumb = ({
     onMoveStart: (e) => {},
     onMove: (e) => {
       updateFlagRef.current = false;
-      let { x, y } = pixelPositionRef.current;
+      let { x, y } = pxPosRef.current;
       if (e.pointerType === "keyboard") {
-        x = clamp(x, "x");
-        y = clamp(y, "y");
+        x = clampPx(x, "x");
+        y = clampPx(y, "y");
       }
       x += e.deltaX;
       y += e.deltaY;
-      pixelPositionRef.current = { x, y };
-      setNormPosition(memoizedPxPosToNormPos);
+      pxPosRef.current = { x, y };
+
+      const normPos = getNormPosFromPxPos(pxPosRef.current);
+      const clampedNormPos = clampNorm(normPos);
+      setNormPos(clampedNormPos);
 
       console.log("onMove");
-      console.log(pixelPositionRef.current);
-      console.log(memoizedPxPosToNormPos);
 
-      onChange?.(pixelPositionToValue);
+      onChange?.(getValueFromNormPos(clampedNormPos));
     },
     onMoveEnd: (e) => {
-      let { x, y } = pixelPositionRef.current;
-      x = clamp(x, "x");
-      y = clamp(y, "y");
-      pixelPositionRef.current = { x, y };
-      setNormPosition(memoizedPxPosToNormPos);
+      let { x, y } = pxPosRef.current;
+      x = clampPx(x, "x");
+      y = clampPx(y, "y");
+      pxPosRef.current = { x, y };
+
+      const normPos = getNormPosFromPxPos(pxPosRef.current);
+      const clampedNormPos = clampNorm(normPos);
+      setNormPos(clampedNormPos);
 
       console.log("onMoveEnd");
-      console.log(pixelPositionRef.current);
-      console.log(memoizedPxPosToNormPos);
 
       updateFlagRef.current = true;
-      onChange?.(pixelPositionToValue);
+      onChange?.(getValueFromNormPos(clampedNormPos));
     },
   });
   const { pressProps, isPressed } = usePress({
     onPress: (e) => {},
-    onPressStart: (e) => {
-      updateFlagRef.current = false;
-    },
+    onPressStart: (e) => {},
     onPressEnd: (e) => {},
     onPressChange: (e) => {},
     onPressUp: (e) => {
-      let { x, y } = pixelPositionRef.current;
-      x = clamp(x, "x");
-      y = clamp(y, "y");
-      pixelPositionRef.current = { x, y };
-      setNormPosition(memoizedPxPosToNormPos);
+      let { x, y } = pxPosRef.current;
+      x = clampPx(x, "x");
+      y = clampPx(y, "y");
+      pxPosRef.current = { x, y };
+
+      const normPos = getNormPosFromPxPos(pxPosRef.current);
+      const clampedNormPos = clampNorm(normPos);
+      setNormPos(clampedNormPos);
 
       console.log("onPressUp");
-      console.log(pixelPositionRef.current);
-      console.log(memoizedPxPosToNormPos);
 
       updateFlagRef.current = true;
-      onChange?.(pixelPositionToValue);
+      onChange?.(getValueFromNormPos(clampedNormPos));
     },
   });
 
@@ -171,32 +185,32 @@ export const XYThumb = ({
           height: thumbSize.height,
           borderRadius: "100%",
           position: "absolute",
-          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px)`,
+          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px)`,
           background: "black",
         }}
       />
       <p
         style={{
           position: "absolute",
-          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px)`,
+          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px)`,
         }}
       >{`${value.x}, ${value.y}`}</p>
       <p
         style={{
           position: "absolute",
-          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px + 16px)`,
+          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px + 16px)`,
         }}
-      >{`${normPosition.x}, ${normPosition.y}`}</p>
+      >{`${normPos.x}, ${normPos.y}`}</p>
       <p
         style={{
           position: "absolute",
-          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px + 32px)`,
+          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px + 32px)`,
         }}
-      >{`${pixelPositionRef.current.x}, ${pixelPositionRef.current.y}`}</p>
+      >{`${pxPosRef.current.x}, ${pxPosRef.current.y}`}</p>
     </>
   );
 };

@@ -1,13 +1,9 @@
+import type { Size } from "../index";
 import { createContext, useContext } from "react";
 
-export type SquareSize = {
-  width: number;
-  height: number;
-};
-
 export type XYTrackContextType = {
-  trackSize: SquareSize;
-  thumbSize: SquareSize;
+  trackSize: Size;
+  thumbSize: Size;
 };
 
 export const XYTrackContext = createContext<XYTrackContextType>({

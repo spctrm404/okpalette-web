@@ -1,13 +1,13 @@
+import type { Size } from "../index";
 import { ReactElement, useEffect, useMemo, useRef, useState } from "react";
-import { XYTrackContext } from "./XYTrackContext";
-import { XYThumb } from "../XYThumb";
+import { XYTrackContext, XYThumb } from "../index";
 import st from "./_XYTrack.module.scss";
 import classNames from "classnames/bind";
 
 const cx = classNames.bind(st);
 
 export type XYTrackProps = {
-  thumbSize: { width: number; height: number };
+  thumbSize: Size;
   children: ReactElement<typeof XYThumb> | ReactElement<typeof XYThumb>[];
 };
 
@@ -22,7 +22,6 @@ export const XYTrack = ({ thumbSize, children }: XYTrackProps) => {
     const updateTrackSize = () => {
       const { width, height } = track.getBoundingClientRect();
       setTrackSize({ width, height });
-      console.log("trackSize is updated!", { width, height });
     };
 
     const resizeObserver = new ResizeObserver(updateTrackSize);
