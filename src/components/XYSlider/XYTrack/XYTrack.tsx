@@ -7,36 +7,41 @@ import classNames from "classnames/bind";
 const cx = classNames.bind(st);
 
 export type XYTrackProps = {
-  thumbWidth: number;
-  thumbHeight: number;
+  thumbSize: { width: number; height: number };
   children: ReactElement<typeof XYThumb> | ReactElement<typeof XYThumb>[];
 };
 
-export const XYTrack = ({
-  thumbWidth,
-  thumbHeight,
-  children,
-}: XYTrackProps) => {
+export const XYTrack = ({ thumbSize, children }: XYTrackProps) => {
   const trackRef = useRef<HTMLDivElement>(null);
-  const [track, setTrack] = useState<HTMLDivElement | null>(trackRef.current);
+  const [trackSize, setTrackSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    if (trackRef) {
-      console.log("update trackRef", trackRef.current);
-      setTrack(trackRef.current);
-    }
+    const track = trackRef.current;
+    if (!track) return;
+
+    const updateTrackSize = () => {
+      const { width, height } = track.getBoundingClientRect();
+      setTrackSize({ width, height });
+      console.log("trackSize is updated!", { width, height });
+    };
+
+    const resizeObserver = new ResizeObserver(updateTrackSize);
+    resizeObserver.observe(track);
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
-  const contextValue = useMemo(
+  const memoizedContextValue = useMemo(
     () => ({
-      track,
-      thumbSize: { width: thumbWidth, height: thumbHeight },
+      trackSize,
+      thumbSize,
     }),
-    [track, thumbWidth, thumbHeight],
+    [trackSize.width, trackSize.height, thumbSize.width, thumbSize.height],
   );
 
   return (
-    <XYTrackContext.Provider value={contextValue}>
+    <XYTrackContext.Provider value={memoizedContextValue}>
       <div className={cx("xy-track")} ref={trackRef}>
         {children}
       </div>

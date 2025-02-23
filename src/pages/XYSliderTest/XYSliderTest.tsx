@@ -18,7 +18,7 @@ const XYSliderTest = () => {
     });
   };
   return (
-    <XYTrack thumbWidth={30} thumbHeight={30}>
+    <XYTrack thumbSize={{ width: 20, height: 20 }}>
       {value.map((v, i) => (
         <XYThumb
           key={`xyThumb_${i}`}

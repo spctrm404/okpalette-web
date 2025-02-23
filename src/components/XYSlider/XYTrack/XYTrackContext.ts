@@ -1,12 +1,17 @@
 import { createContext, useContext } from "react";
 
+export type SquareSize = {
+  width: number;
+  height: number;
+};
+
 export type XYTrackContextType = {
-  track: HTMLDivElement | null;
-  thumbSize: { width: number; height: number };
+  trackSize: SquareSize;
+  thumbSize: SquareSize;
 };
 
 export const XYTrackContext = createContext<XYTrackContextType>({
-  track: null,
+  trackSize: { width: 0, height: 0 },
   thumbSize: { width: 0, height: 0 },
 });
 

@@ -26,68 +26,80 @@ export const XYThumb = ({
   defaultValue = { x: 0, y: 0 },
   onChange,
 }: XYThumbProps) => {
-  const { track, thumbSize } = useContext(XYTrackContext);
-  const trackSize = useMemo(() => {
-    if (!track) return { width: 0, height: 0 };
+  const { trackSize, thumbSize } = useContext(XYTrackContext);
+
+  const valueToNormPosition = useMemo(() => {
     return {
-      width: track.getBoundingClientRect().width,
-      height: track.getBoundingClientRect().height,
+      x: (value.x - minValue.x) / (maxValue.x - minValue.x),
+      y: (value.y - minValue.y) / (maxValue.y - minValue.y),
     };
-  }, [track]);
-
-  const valueToPosition = useMemo(() => {
+  }, [value.x, value.y, minValue.x, minValue.y, maxValue.x, maxValue.y]);
+  const valueToPixelPosition = useMemo(() => {
+    const { x, y } = valueToNormPosition;
     return {
-      x: ((value.x - minValue.x) / (maxValue.x - minValue.x)) * trackSize.width,
-      y:
-        ((value.y - minValue.y) / (maxValue.y - minValue.y)) * trackSize.height,
+      // x: ((value.x - minValue.x) / (maxValue.x - minValue.x)) * trackSize.width,
+      // y:
+      //   ((value.y - minValue.y) / (maxValue.y - minValue.y)) * trackSize.height,
+      x: x * trackSize.width,
+      y: y * trackSize.height,
     };
-  }, [
-    trackSize.width,
-    trackSize.height,
-    value.x,
-    value.y,
-    minValue.x,
-    minValue.y,
-    maxValue.x,
-    maxValue.y,
-  ]);
+  }, [valueToNormPosition, trackSize.width, trackSize.height]);
 
-  const [events, setEvents] = useState<String[]>([]);
-  const [color, setColor] = useState("black");
-
-  const [position, setPosition] = useState(valueToPosition);
-  const positionRef = useRef(position);
-
-  const positionToValue = useMemo(() => {
-    return {
-      x:
-        (positionRef.current.x / trackSize.width) * (maxValue.x - minValue.x) +
-        minValue.x,
-      y:
-        (positionRef.current.y / trackSize.height) * (maxValue.y - minValue.y) +
-        minValue.y,
-    };
-  }, [
-    positionRef.current.x,
-    positionRef.current.y,
-    trackSize.width,
-    trackSize.height,
-    minValue.x,
-    minValue.y,
-    maxValue.x,
-    maxValue.y,
-  ]);
+  const updateFlagRef = useRef(true);
+  const [normPosition, setNormPosition] = useState(valueToNormPosition);
+  const pixelPositionRef = useRef(valueToPixelPosition);
 
   useEffect(() => {
-    setPosition(valueToPosition);
-  }, [valueToPosition]);
+    if (!updateFlagRef.current) return;
 
-  const clamp = (pos: number, dir: "X" | "Y") => {
-    // const trackBoundingClientRect = trackRef?.current?.getBoundingClientRect();
-    // if (!trackBoundingClientRect) return pos;
+    console.log("useEffect1");
+    console.log("valueToNormPosition", valueToNormPosition);
+    console.log("valueToPixelPosition", valueToPixelPosition);
+    console.log("trackSize", trackSize);
+    setNormPosition(valueToNormPosition);
+    pixelPositionRef.current = valueToPixelPosition;
+    updateFlagRef.current = false;
+  }, [valueToNormPosition]);
+
+  useEffect(() => {
+    console.log("useEffect2");
+    console.log("valueToPixelPosition", valueToPixelPosition);
+    console.log("trackSize", trackSize);
+    pixelPositionRef.current = valueToPixelPosition;
+  }, [trackSize]);
+
+  const pixelPositionToNormPosition = useMemo(() => {
+    return {
+      x: pixelPositionRef.current.x / trackSize.width,
+      y: pixelPositionRef.current.y / trackSize.height,
+    };
+  }, [pixelPositionRef.current.x, pixelPositionRef.current.y, trackSize]);
+  const pixelPositionToValue = useMemo(() => {
+    const { x, y } = pixelPositionToNormPosition;
+    return {
+      // x:
+      //   (pixelPositionRef.current.x / trackSize.width) *
+      //     (maxValue.x - minValue.x) +
+      //   minValue.x,
+      // y:
+      //   (pixelPositionRef.current.y / trackSize.height) *
+      //     (maxValue.y - minValue.y) +
+      //   minValue.y,
+      x: x * (maxValue.x - minValue.x) + minValue.x,
+      y: y * (maxValue.y - minValue.y) + minValue.y,
+    };
+  }, [
+    pixelPositionToNormPosition,
+    minValue.x,
+    minValue.y,
+    maxValue.x,
+    maxValue.y,
+  ]);
+
+  const clamp = (pos: number, dir: "x" | "y") => {
     return Math.min(
       Math.max(pos, 0),
-      dir === "X" ? trackSize.width : trackSize.height,
+      dir === "x" ? trackSize.width : trackSize.height,
     );
   };
 
@@ -102,64 +114,61 @@ export const XYThumb = ({
     onHoverChange: (e) => {},
   });
   const { moveProps } = useMove({
-    onMoveStart(e) {
-      setColor("red");
-      setEvents((events) => [
-        `move start with pointerType = ${e.pointerType}`,
-        ...events,
-      ]);
+    onMoveStart: (e) => {},
+    onMove: (e) => {
+      updateFlagRef.current = false;
+      let { x, y } = pixelPositionRef.current;
+      if (e.pointerType === "keyboard") {
+        x = clamp(x, "x");
+        y = clamp(y, "y");
+      }
+      x += e.deltaX;
+      y += e.deltaY;
+      pixelPositionRef.current = { x, y };
+      setNormPosition(pixelPositionToNormPosition);
+
+      console.log("onMove");
+      console.log(pixelPositionRef.current);
+      console.log(pixelPositionToNormPosition);
+
+      onChange?.(pixelPositionToValue);
     },
-    onMove(e) {
-      setPosition(({ x, y }) => {
-        // Normally, we want to allow the user to continue
-        // dragging outside the box such that they need to
-        // drag back over the ball again before it moves.
-        // This is handled below by clamping during render.
-        // If using the keyboard, however, we need to clamp
-        // here so that dragging outside the container and
-        // then using the arrow keys works as expected.
-        if (e.pointerType === "keyboard") {
-          x = clamp(x, "X");
-          y = clamp(y, "Y");
-        }
+    onMoveEnd: (e) => {
+      let { x, y } = pixelPositionRef.current;
+      x = clamp(x, "x");
+      y = clamp(y, "y");
+      pixelPositionRef.current = { x, y };
+      setNormPosition(pixelPositionToNormPosition);
 
-        x += e.deltaX;
-        y += e.deltaY;
-        return { x, y };
-      });
+      console.log("onMoveEnd");
+      console.log(pixelPositionRef.current);
+      console.log(pixelPositionToNormPosition);
 
-      // onChange
-      onChange?.(positionToValue);
-
-      setEvents((events) => [
-        `move with pointerType = ${e.pointerType}, deltaX = ${e.deltaX}, deltaY = ${e.deltaY}`,
-        ...events,
-      ]);
-    },
-    onMoveEnd(e) {
-      setPosition(({ x, y }) => {
-        // Clamp position on mouse up
-        x = clamp(x, "X");
-        y = clamp(y, "Y");
-        return { x, y };
-      });
-      setColor("black");
-
-      // onChange
-      onChange?.(positionToValue);
-
-      setEvents((events) => [
-        `move end with pointerType = ${e.pointerType}`,
-        ...events,
-      ]);
+      updateFlagRef.current = true;
+      onChange?.(pixelPositionToValue);
     },
   });
   const { pressProps, isPressed } = usePress({
     onPress: (e) => {},
-    onPressStart: (e) => {},
+    onPressStart: (e) => {
+      updateFlagRef.current = false;
+    },
     onPressEnd: (e) => {},
     onPressChange: (e) => {},
-    onPressUp: (e) => {},
+    onPressUp: (e) => {
+      let { x, y } = pixelPositionRef.current;
+      x = clamp(x, "x");
+      y = clamp(y, "y");
+      pixelPositionRef.current = { x, y };
+      setNormPosition(pixelPositionToNormPosition);
+
+      console.log("onPressUp");
+      console.log(pixelPositionRef.current);
+      console.log(pixelPositionToNormPosition);
+
+      updateFlagRef.current = true;
+      onChange?.(pixelPositionToValue);
+    },
   });
 
   const reactAriaProps = mergeProps(
@@ -179,21 +188,32 @@ export const XYThumb = ({
           height: thumbSize.height,
           borderRadius: "100%",
           position: "absolute",
-          left: clamp(position.x, "X") - 0.5 * thumbSize.width,
-          top: clamp(position.y, "Y") - 0.5 * thumbSize.height,
-          background: color,
+          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px)`,
+          background: "black",
         }}
       />
-      {/* <ul
+      <p
         style={{
-          maxHeight: "200px",
-          overflow: "auto",
+          position: "absolute",
+          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px)`,
         }}
-      >
-        {events.map((e, i) => (
-          <li key={i}>{e}</li>
-        ))}
-      </ul> */}
+      >{`${value.x}, ${value.y}`}</p>
+      <p
+        style={{
+          position: "absolute",
+          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px + 16px)`,
+        }}
+      >{`${normPosition.x}, ${normPosition.y}`}</p>
+      <p
+        style={{
+          position: "absolute",
+          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px + 32px)`,
+        }}
+      >{`${pixelPositionRef.current.x}, ${pixelPositionRef.current.y}`}</p>
     </>
   );
 };
