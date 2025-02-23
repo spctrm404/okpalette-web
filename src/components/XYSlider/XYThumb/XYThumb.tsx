@@ -28,54 +28,43 @@ export const XYThumb = ({
 }: XYThumbProps) => {
   const { trackSize, thumbSize } = useContext(XYTrackContext);
 
-  const valueToNormPosition = useMemo(() => {
+  const memoizedValToNormPos = useMemo(() => {
     return {
       x: (value.x - minValue.x) / (maxValue.x - minValue.x),
       y: (value.y - minValue.y) / (maxValue.y - minValue.y),
     };
   }, [value.x, value.y, minValue.x, minValue.y, maxValue.x, maxValue.y]);
-  const valueToPixelPosition = useMemo(() => {
-    const { x, y } = valueToNormPosition;
+  const memoizedValToPxPos = useMemo(() => {
+    const { x, y } = memoizedValToNormPos;
     return {
-      // x: ((value.x - minValue.x) / (maxValue.x - minValue.x)) * trackSize.width,
-      // y:
-      //   ((value.y - minValue.y) / (maxValue.y - minValue.y)) * trackSize.height,
       x: x * trackSize.width,
       y: y * trackSize.height,
     };
-  }, [valueToNormPosition, trackSize.width, trackSize.height]);
+  }, [memoizedValToNormPos, trackSize.width, trackSize.height]);
 
   const updateFlagRef = useRef(true);
-  const [normPosition, setNormPosition] = useState(valueToNormPosition);
-  const pixelPositionRef = useRef(valueToPixelPosition);
+  const [normPosition, setNormPosition] = useState(memoizedValToNormPos);
+  const pixelPositionRef = useRef(memoizedValToPxPos);
 
   useEffect(() => {
     if (!updateFlagRef.current) return;
 
-    console.log("useEffect1");
-    console.log("valueToNormPosition", valueToNormPosition);
-    console.log("valueToPixelPosition", valueToPixelPosition);
-    console.log("trackSize", trackSize);
-    setNormPosition(valueToNormPosition);
-    pixelPositionRef.current = valueToPixelPosition;
+    setNormPosition(memoizedValToNormPos);
+    pixelPositionRef.current = memoizedValToPxPos;
     updateFlagRef.current = false;
-  }, [valueToNormPosition]);
-
+  }, [memoizedValToNormPos]);
   useEffect(() => {
-    console.log("useEffect2");
-    console.log("valueToPixelPosition", valueToPixelPosition);
-    console.log("trackSize", trackSize);
-    pixelPositionRef.current = valueToPixelPosition;
+    pixelPositionRef.current = memoizedValToPxPos;
   }, [trackSize]);
 
-  const pixelPositionToNormPosition = useMemo(() => {
+  const memoizedPxPosToNormPos = useMemo(() => {
     return {
       x: pixelPositionRef.current.x / trackSize.width,
       y: pixelPositionRef.current.y / trackSize.height,
     };
   }, [pixelPositionRef.current.x, pixelPositionRef.current.y, trackSize]);
   const pixelPositionToValue = useMemo(() => {
-    const { x, y } = pixelPositionToNormPosition;
+    const { x, y } = memoizedPxPosToNormPos;
     return {
       // x:
       //   (pixelPositionRef.current.x / trackSize.width) *
@@ -88,13 +77,7 @@ export const XYThumb = ({
       x: x * (maxValue.x - minValue.x) + minValue.x,
       y: y * (maxValue.y - minValue.y) + minValue.y,
     };
-  }, [
-    pixelPositionToNormPosition,
-    minValue.x,
-    minValue.y,
-    maxValue.x,
-    maxValue.y,
-  ]);
+  }, [memoizedPxPosToNormPos, minValue.x, minValue.y, maxValue.x, maxValue.y]);
 
   const clamp = (pos: number, dir: "x" | "y") => {
     return Math.min(
@@ -125,11 +108,11 @@ export const XYThumb = ({
       x += e.deltaX;
       y += e.deltaY;
       pixelPositionRef.current = { x, y };
-      setNormPosition(pixelPositionToNormPosition);
+      setNormPosition(memoizedPxPosToNormPos);
 
       console.log("onMove");
       console.log(pixelPositionRef.current);
-      console.log(pixelPositionToNormPosition);
+      console.log(memoizedPxPosToNormPos);
 
       onChange?.(pixelPositionToValue);
     },
@@ -138,11 +121,11 @@ export const XYThumb = ({
       x = clamp(x, "x");
       y = clamp(y, "y");
       pixelPositionRef.current = { x, y };
-      setNormPosition(pixelPositionToNormPosition);
+      setNormPosition(memoizedPxPosToNormPos);
 
       console.log("onMoveEnd");
       console.log(pixelPositionRef.current);
-      console.log(pixelPositionToNormPosition);
+      console.log(memoizedPxPosToNormPos);
 
       updateFlagRef.current = true;
       onChange?.(pixelPositionToValue);
@@ -160,11 +143,11 @@ export const XYThumb = ({
       x = clamp(x, "x");
       y = clamp(y, "y");
       pixelPositionRef.current = { x, y };
-      setNormPosition(pixelPositionToNormPosition);
+      setNormPosition(memoizedPxPosToNormPos);
 
       console.log("onPressUp");
       console.log(pixelPositionRef.current);
-      console.log(pixelPositionToNormPosition);
+      console.log(memoizedPxPosToNormPos);
 
       updateFlagRef.current = true;
       onChange?.(pixelPositionToValue);
