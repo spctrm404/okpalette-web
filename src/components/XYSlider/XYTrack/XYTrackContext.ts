@@ -1,22 +1,12 @@
-import type { Size } from "../index";
-import { createContext, useContext } from "react";
+import type { Size2D } from "../index";
+import { createContext } from "react";
 
 export type XYTrackContextType = {
-  trackSize: Size;
-  thumbSize: Size;
+  trackSize: Size2D;
+  thumbSize: Size2D;
 };
 
 export const XYTrackContext = createContext<XYTrackContextType>({
   trackSize: { width: 0, height: 0 },
   thumbSize: { width: 0, height: 0 },
 });
-
-export const useXYTrackContext = (): XYTrackContextType => {
-  const context = useContext(XYTrackContext);
-  if (!context)
-    throw new Error(
-      "useXYTrackContext must be used within a XYTrackContextProvider",
-    );
-
-  return context;
-};
