@@ -2,7 +2,7 @@
 // todo: touch situ
 
 import type { Dim2D } from "../index";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { XYTrackContext } from "../XYTrack";
 import { mergeProps, useFocus, useHover, useMove, usePress } from "react-aria";
 
@@ -11,8 +11,8 @@ export type XYThumbProps = {
   maxValue?: Dim2D;
   step?: Dim2D;
   value: Dim2D;
-  constraint?: (newValue: Dim2D) => Dim2D;
   onChange?: (newValue: Dim2D) => void;
+  constraint?: (newValue: Dim2D) => Dim2D;
   index?: number;
 };
 
@@ -21,67 +21,62 @@ export const XYThumb = ({
   maxValue = { x: 100, y: 100 },
   step = { x: 1, y: 1 },
   value,
-  constraint,
   onChange,
+  constraint,
   index,
 }: XYThumbProps) => {
   const { trackSize, thumbSize } = useContext(XYTrackContext);
 
-  const normPosFromVal: Dim2D = {
-    x: (value.x - minValue.x) / (maxValue.x - minValue.x),
-    // y:
-    //   (value ? value.y : defaultValue.y - minValue.y) /
-    //   (maxValue.y - minValue.y),
-    y: 1 - (value.y - minValue.y) / (maxValue.y - minValue.y),
-  };
-  const pxPosFromVal: Dim2D = {
-    x: normPosFromVal.x * trackSize.width,
-    y: normPosFromVal.y * trackSize.height,
-  };
+  const lastValueRef = useRef<Dim2D>(value);
 
-  const updateFlagRef = useRef(true);
-  const [normPos, setNormPos] = useState<Dim2D>(normPosFromVal);
-  const pxPosRef = useRef<Dim2D>(pxPosFromVal);
+  const normPositionFromValue: Dim2D = useMemo(
+    () => ({
+      x: (value.x - minValue.x) / (maxValue.x - minValue.x),
+      y: (value.y - minValue.y) / (maxValue.y - minValue.y),
+    }),
+    [value.x, value.y, minValue.x, minValue.y, maxValue.x, maxValue.y],
+  );
+  const pxPositionFromValue: Dim2D = useMemo(
+    () => ({
+      x: normPositionFromValue.x * trackSize.width,
+      y: (1 - normPositionFromValue.y) * trackSize.height,
+    }),
+    [
+      normPositionFromValue.x,
+      normPositionFromValue.y,
+      trackSize.width,
+      trackSize.height,
+    ],
+  );
 
-  useEffect(() => {
-    if (!updateFlagRef.current) return;
-
-    console.log(`${index}_useEffect1`);
-    console.log("value", value);
-    console.log("normPosFromVal", normPosFromVal);
-    console.log("pxPosFromVal", pxPosFromVal);
-
-    setNormPos(normPosFromVal);
-    pxPosRef.current = pxPosFromVal;
-  }, [value.x, value.y]);
-  useEffect(() => {
-    console.log(`${index}_useEffect2`);
-    console.log("trackSize", trackSize);
-    console.log("pxPosFromVal", pxPosFromVal);
-
-    pxPosRef.current = pxPosFromVal;
-  }, [trackSize.width, trackSize.height]);
+  const pxPositionRef = useRef<Dim2D>(pxPositionFromValue);
+  const [normPosition, setNormPosition] = useState<Dim2D>(
+    normPositionFromValue,
+  );
 
   const clampPxPos = (pxPos: Dim2D): Dim2D => ({
     x: Math.min(trackSize.width, Math.max(0, pxPos.x)),
     y: Math.min(trackSize.height, Math.max(0, pxPos.y)),
   });
-  const clampNormPos = (normPos: Dim2D): Dim2D => ({
+  const clampNormPosition = (normPos: Dim2D): Dim2D => ({
     x: Math.min(1, Math.max(0, normPos.x)),
     y: Math.min(1, Math.max(0, normPos.y)),
   });
 
-  const pxPosToNormPos = (pxPos: Dim2D): Dim2D => ({
+  const pxPositionToNormPosition = (pxPos: Dim2D): Dim2D => ({
     x: pxPos.x / trackSize.width,
-    y: pxPos.y / trackSize.height,
+    y: 1 - pxPos.y / trackSize.height,
   });
-  const normPosToVal = (normPos: Dim2D): Dim2D => ({
+  const normPositionToPxPosition = (normPos: Dim2D): Dim2D => ({
+    x: normPos.x * trackSize.width,
+    y: (1 - normPos.y) * trackSize.height,
+  });
+  const normPositionToValue = (normPos: Dim2D): Dim2D => ({
     x: normPos.x * (maxValue.x - minValue.x) + minValue.x,
-    // y: normPos.y * (maxValue.y - minValue.y) + minValue.y,
-    y: (1 - normPos.y) * (maxValue.y - minValue.y) + minValue.y,
+    y: normPos.y * (maxValue.y - minValue.y) + minValue.y,
   });
 
-  const quantizeVal = (val: Dim2D): Dim2D => {
+  const quantizeValue = (val: Dim2D): Dim2D => {
     const roundToNearestMultiple = (
       base: number,
       multipleOf: number,
@@ -98,70 +93,72 @@ export const XYThumb = ({
     };
   };
 
-  const applyConstraint = () => {};
-  const normPosToPxPos = (normPos: Dim2D): Dim2D => ({
-    x: normPos.x * trackSize.width,
-    y: normPos.y * trackSize.height,
-  });
+  const moveCommon = (pxPosition: Dim2D) => {
+    pxPositionRef.current = pxPosition;
+
+    // pxPos -> normPos
+    const normPosition = pxPositionToNormPosition(pxPositionRef.current);
+    let clampedNormPosition = clampNormPosition(normPosition);
+    if (constraint) {
+      clampedNormPosition = constraint(clampedNormPosition);
+      pxPositionRef.current = normPositionToPxPosition(clampedNormPosition);
+    }
+    setNormPosition(clampedNormPosition);
+
+    // normPos -> val
+    const newValue = normPositionToValue(clampedNormPosition);
+    const quantizedNewValue = quantizeValue(newValue);
+    lastValueRef.current = quantizedNewValue;
+
+    console.log(`${index}_onMove`);
+    onChange?.(lastValueRef.current);
+  };
 
   const { focusProps } = useFocus({
-    onFocus: (e) => {},
-    onBlur: (e) => {},
-    onFocusChange: (e) => {},
+    onFocus: () => {},
+    onBlur: () => {},
+    onFocusChange: () => {},
   });
   const { hoverProps, isHovered } = useHover({
-    onHoverStart: (e) => {},
-    onHoverEnd: (e) => {},
-    onHoverChange: (e) => {},
+    onHoverStart: () => {},
+    onHoverEnd: () => {},
+    onHoverChange: () => {},
   });
   const { moveProps } = useMove({
-    onMoveStart: (e) => {},
+    onMoveStart: () => {},
     onMove: (e) => {
-      updateFlagRef.current = false;
-      let pxPos = { ...pxPosRef.current };
-      if (e.pointerType === "keyboard") pxPos = clampPxPos(pxPos);
-      pxPos.x += e.deltaX;
-      pxPos.y += e.deltaY;
-      pxPosRef.current = pxPos;
+      // update pxPos
+      let pxPosition = { ...pxPositionRef.current };
+      if (e.pointerType === "keyboard") pxPosition = clampPxPos(pxPosition);
+      pxPosition.x += e.deltaX;
+      pxPosition.y += e.deltaY;
 
-      const normPos = pxPosToNormPos(pxPosRef.current);
-      const clampedNormPos = clampNormPos(normPos);
-      setNormPos(clampedNormPos);
-
-      console.log(`${index}_onMove`);
-
-      const newValue = normPosToVal(clampedNormPos);
-      const quantizedNewValue = quantizeVal(newValue);
-      onChange?.(quantizedNewValue);
+      moveCommon(pxPosition);
     },
-    onMoveEnd: (e) => {
-      let pxPos = { ...pxPosRef.current };
-      pxPos = clampPxPos(pxPos);
-      pxPosRef.current = pxPos;
+    onMoveEnd: () => {
+      // update pxPos
+      let pxPosition = { ...pxPositionRef.current };
+      pxPosition = clampPxPos(pxPosition);
 
-      const normPos = pxPosToNormPos(pxPosRef.current);
-      let clampedNormPos = clampNormPos(normPos);
-      if (constraint) {
-        clampedNormPos = constraint(clampedNormPos);
-        clampedNormPos.y = 1 - clampedNormPos.y;
-        pxPosRef.current = normPosToPxPos(clampedNormPos);
-      }
-      setNormPos(clampedNormPos);
-
-      console.log(`${index}_onMoveEnd`);
-
-      updateFlagRef.current = true;
-      const newValue = normPosToVal(clampedNormPos);
-      const quantizedNewValue = quantizeVal(newValue);
-      onChange?.(quantizedNewValue);
+      moveCommon(pxPosition);
     },
   });
   const { pressProps, isPressed } = usePress({
-    onPress: (e) => {},
-    onPressStart: (e) => {},
-    onPressEnd: (e) => {},
-    onPressChange: (e) => {},
-    onPressUp: (e) => {},
+    onPress: () => {
+      // console.log(`${index}_onPress`);
+    },
+    onPressStart: () => {
+      // console.log(`${index}_onPressStart`);
+    },
+    onPressEnd: () => {
+      // console.log(`${index}_onPressEnd`);
+    },
+    onPressChange: () => {
+      // console.log(`${index}_onPressChange`);
+    },
+    onPressUp: () => {
+      // console.log(`${index}_onPressUp`);
+    },
   });
 
   const reactAriaProps = mergeProps(
@@ -170,6 +167,37 @@ export const XYThumb = ({
     moveProps,
     pressProps,
   );
+
+  if (
+    value.x !== lastValueRef.current.x ||
+    value.y !== lastValueRef.current.y
+  ) {
+    console.log(`${index}_val->pos`);
+    lastValueRef.current = value;
+    // pxPositionRef.current = pxPositionFromValue;
+    // setNormPosition(normPositionFromValue);
+    pxPositionRef.current = pxPositionFromValue;
+    const normPosition = pxPositionToNormPosition(pxPositionRef.current);
+    let clampedNormPosition = clampNormPosition(normPosition);
+    if (constraint) {
+      clampedNormPosition = constraint(clampedNormPosition);
+      pxPositionRef.current = normPositionToPxPosition(clampedNormPosition);
+    }
+    setNormPosition(clampedNormPosition);
+
+    const newValue = normPositionToValue(clampedNormPosition);
+    const quantizedNewValue = quantizeValue(newValue);
+    if (
+      quantizedNewValue.x !== lastValueRef.current.x ||
+      quantizedNewValue.y !== lastValueRef.current.y
+    ) {
+      onChange?.(quantizedNewValue);
+    }
+  }
+
+  useEffect(() => {
+    pxPositionRef.current = pxPositionFromValue;
+  }, [trackSize]);
 
   return (
     <>
@@ -181,41 +209,21 @@ export const XYThumb = ({
           height: thumbSize.height,
           borderRadius: "100%",
           position: "absolute",
-          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px)`,
+          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
+          bottom: `calc(${100 * normPosition.y}% - ${0.5 * thumbSize.height}px)`,
           background: "black",
         }}
       />
-      <p
+      <div
         style={{
           position: "absolute",
-          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px)`,
+          left: `calc(${100 * normPosition.x}% - ${0.5 * thumbSize.width}px)`,
+          top: `calc(${100 * (1 - normPosition.y)}% - ${0.5 * thumbSize.height}px + 24px)`,
         }}
       >
-        {index}
-      </p>
-      <p
-        style={{
-          position: "absolute",
-          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px + 16px)`,
-        }}
-      >{`${value.x}, ${value.y}`}</p>
-      <p
-        style={{
-          position: "absolute",
-          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px + 32px)`,
-        }}
-      >{`${normPos.x}, ${normPos.y}`}</p>
-      <p
-        style={{
-          position: "absolute",
-          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
-          top: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px + 48px)`,
-        }}
-      >{`${pxPosRef.current.x}, ${pxPosRef.current.y}`}</p>
+        <div>{`${normPosition.x}, ${normPosition.y}`}</div>
+        <div>{`${pxPositionRef.current.x}, ${pxPositionRef.current.y}`}</div>
+      </div>
     </>
   );
 };

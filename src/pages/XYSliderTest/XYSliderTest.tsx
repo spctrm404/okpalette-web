@@ -58,6 +58,7 @@ const XYSliderTest = () => {
         <>
           <p key={`value_${i}`}>{`${v.x}, ${v.y}`}</p>
           <input
+            key={`range_${i}_x`}
             type="range"
             value={v.x}
             onChange={(e) => {
@@ -65,6 +66,7 @@ const XYSliderTest = () => {
             }}
           />
           <input
+            key={`range_${i}_y`}
             type="range"
             value={v.y}
             onChange={(e) => {

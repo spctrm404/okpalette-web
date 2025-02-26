@@ -1,5 +1,10 @@
-.xy-track {
-  position: relative;
-  aspect-ratio: 4 / 1;
-  background-color: aqua;
+.xy {
+  &-container {
+    aspect-ratio: 4 / 1;
+    background-color: oklch(95% 0 0deg);
+  }
+
+  &-track {
+    background-color: oklch(90% 0 0deg);
+  }
 }
