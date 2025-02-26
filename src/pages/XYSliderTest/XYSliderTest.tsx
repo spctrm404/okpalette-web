@@ -5,11 +5,23 @@ import { useState } from "react";
 const XYSliderTest = () => {
   const [value, setValue] = useState([
     { x: 25, y: 25 },
-    // { x: 50, y: 50 },
-    // { x: 75, y: 75 },
+    { x: 50, y: 50 },
+    { x: 75, y: 75 },
   ]);
 
   const constraints = [
+    (pos: Dim2D): Dim2D => {
+      let { x, y } = { ...pos };
+      y = x;
+      return { x, y };
+    },
+    (pos: Dim2D): Dim2D => {
+      let { x, y } = { ...pos };
+      if (x < value[0].x / 100.0) x = value[0].x / 100.0;
+      if (x > value[2].x / 100.0) x = value[2].x / 100.0;
+      y = x;
+      return { x, y };
+    },
     (pos: Dim2D): Dim2D => {
       let { x, y } = { ...pos };
       y = x;
