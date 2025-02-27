@@ -5,6 +5,7 @@
   }
 
   &-track {
+    touch-action: none;
     background-color: oklch(90% 0 0deg);
   }
 }
