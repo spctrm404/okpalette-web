@@ -1,6 +1,6 @@
 import type { Size2D } from "../index";
 import { XYTrackContext, XYThumb } from "../index";
-import { ReactElement, useCallback, useMemo, useRef, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 import st from "./_XYTrack.module.scss";
 import classNames from "classnames/bind";
 
@@ -13,11 +13,11 @@ export type XYTrackProps = {
 
 export const XYTrack = ({ thumbSize, children }: XYTrackProps) => {
   const [trackSize, setTrackSize] = useState<Size2D>({ width: 0, height: 0 });
-  const resizeObserver = useRef<ResizeObserver>();
   const trackRefCallback = useCallback((node: HTMLDivElement) => {
     if (!node) return;
 
     const updateTrackSize = () => {
+      console.log("updateTrackSize()");
       const { width, height } = node.getBoundingClientRect();
       setTrackSize((prev) =>
         prev.width === width && prev.height === height
@@ -27,13 +27,11 @@ export const XYTrack = ({ thumbSize, children }: XYTrackProps) => {
     };
     updateTrackSize();
 
-    if (!resizeObserver.current) {
-      resizeObserver.current = new ResizeObserver(updateTrackSize);
-      resizeObserver.current.observe(node);
-    }
+    const resizeObserver = new ResizeObserver(updateTrackSize);
+    resizeObserver.observe(node);
 
     return () => {
-      resizeObserver.current?.disconnect();
+      resizeObserver.disconnect();
     };
   }, []);
 

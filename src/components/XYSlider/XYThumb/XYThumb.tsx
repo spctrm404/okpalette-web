@@ -216,9 +216,7 @@ export const XYThumb = ({
         style={{
           width: thumbSize.width,
           height: thumbSize.height,
-          position: "absolute",
-          left: `calc(${100 * normPos.x}% - ${0.5 * thumbSize.width}px)`,
-          bottom: `calc(${100 * normPos.y}% - ${0.5 * thumbSize.height}px)`,
+          transform: `translate(calc(${trackSize.width * normPos.x}px - 50%), calc(${trackSize.height * (1 - normPos.y)}px - 50%))`,
         }}
       />
     </>

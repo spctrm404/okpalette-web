@@ -44,7 +44,7 @@ const XYSliderTest = () => {
         {value.map((v, i) => (
           <XYThumb
             key={`xyThumb_${i}`}
-            index={i}
+            idx={i}
             val={v}
             step={{ x: 10, y: 10 }}
             onChange={(newVal) => {
