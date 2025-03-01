@@ -15,6 +15,8 @@ export type XYThumbProps = {
   idx?: number;
   onChange?: (newVal: Dim2D) => void;
   constraintVal?: (val: Dim2D) => Dim2D;
+  className?: string;
+  style?: React.CSSProperties;
 };
 
 export const XYThumb = ({
@@ -25,6 +27,7 @@ export const XYThumb = ({
   idx,
   onChange,
   constraintVal,
+  ...props
 }: XYThumbProps) => {
   const { trackSize, thumbSize } = useContext(XYTrackContext);
 
@@ -210,13 +213,15 @@ export const XYThumb = ({
   return (
     <>
       <div
-        className={cx("xy-thumb")}
+        className={props.className}
         {...reactAriaProps}
         tabIndex={idx}
         style={{
-          width: thumbSize.width,
-          height: thumbSize.height,
-          transform: `translate(calc(${trackSize.width * normPos.x}px - 50%), calc(${trackSize.height * (1 - normPos.y)}px - 50%))`,
+          width: `${thumbSize.width / 16.0}rem`,
+          height: `${thumbSize.height / 16.0}rem`,
+          transform: `translate(calc(${(trackSize.width * normPos.x) / 16.0}rem - 50%), calc(${(trackSize.height * (1 - normPos.y)) / 16.0}rem - 50%))`,
+          backgroundColor: "black",
+          ...props.style,
         }}
       />
     </>

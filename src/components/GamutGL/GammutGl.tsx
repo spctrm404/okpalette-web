@@ -20,20 +20,21 @@ enum AxisValue {
   xy = 3,
 }
 
-type AxisMapping = {
+export type AxisMapping = {
   mappedTo: keyof typeof AxisValue;
   flipped: keyof typeof AxisValue;
   from: number;
   to: number;
 };
 
-type GamutGlProps = {
+export type GamutGlProps = {
   lMapping: AxisMapping;
   cMapping: AxisMapping;
   hMapping: AxisMapping;
   gamut?: "srgb" | "displayP3";
   resolutionMultiplier?: number;
   className?: string;
+  style?: React.CSSProperties;
 };
 
 const GLSL_VAR_PAIRS = {
@@ -43,7 +44,7 @@ const GLSL_VAR_PAIRS = {
   u_XYZ_TO_LINEAR_DISPLAY_P3: XYZ_TO_LINEAR_DISPLAY_P3,
 };
 
-const GamutGl = ({
+export const GamutGl = ({
   lMapping = { mappedTo: "x", flipped: "none", from: 0, to: 1 },
   cMapping = { mappedTo: "y", flipped: "none", from: 0, to: 0.4 },
   hMapping = { mappedTo: "x", flipped: "none", from: 0, to: 360 },
@@ -70,47 +71,44 @@ const GamutGl = ({
     [hMapping.mappedTo, hMapping.flipped, hMapping.from, hMapping.to],
   );
 
-  const render = useCallback((gl: WebGL2RenderingContext) => {
+  const render = (gl: WebGL2RenderingContext) => {
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  }, []);
+  };
 
-  const updateUniforms = useCallback(
-    (gl: WebGL2RenderingContext, program: WebGLProgram) => {
-      const pourMapping = (mapping: AxisMapping, prefix: string) => {
-        gl.uniform1f(
-          gl.getUniformLocation(program, `u_${prefix}MappedTo`),
-          AxisValue[mapping.mappedTo],
-        );
-        gl.uniform1f(
-          gl.getUniformLocation(program, `u_${prefix}Flipped`),
-          AxisValue[mapping.flipped],
-        );
-        gl.uniform1f(
-          gl.getUniformLocation(program, `u_${prefix}From`),
-          mapping.from,
-        );
-        gl.uniform1f(
-          gl.getUniformLocation(program, `u_${prefix}To`),
-          mapping.to,
-        );
-      };
-      pourMapping(memoizedLMapping, "l");
-      pourMapping(memoizedCMapping, "c");
-      pourMapping(memoizedHMapping, "h");
-
+  const updateUniforms = (
+    gl: WebGL2RenderingContext,
+    program: WebGLProgram,
+  ) => {
+    const pourMapping = (mapping: AxisMapping, prefix: string) => {
       gl.uniform1f(
-        gl.getUniformLocation(program, "u_gamut"),
-        gamut === "srgb" ? 0 : 1,
+        gl.getUniformLocation(program, `u_${prefix}MappedTo`),
+        AxisValue[mapping.mappedTo],
       );
-    },
-    [memoizedLMapping, memoizedCMapping, memoizedHMapping, gamut],
-  );
+      gl.uniform1f(
+        gl.getUniformLocation(program, `u_${prefix}Flipped`),
+        AxisValue[mapping.flipped],
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program, `u_${prefix}From`),
+        mapping.from,
+      );
+      gl.uniform1f(gl.getUniformLocation(program, `u_${prefix}To`), mapping.to);
+    };
+    pourMapping(memoizedLMapping, "l");
+    pourMapping(memoizedCMapping, "c");
+    pourMapping(memoizedHMapping, "h");
 
-  const checkGlError = useCallback((gl: WebGL2RenderingContext) => {
+    gl.uniform1f(
+      gl.getUniformLocation(program, "u_gamut"),
+      gamut === "srgb" ? 0 : 1,
+    );
+  };
+
+  const checkGlError = (gl: WebGL2RenderingContext) => {
     const error = gl.getError();
     if (error !== gl.NO_ERROR) console.error("WebGL Error:", error);
-  }, []);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -227,7 +225,7 @@ const GamutGl = ({
         positionBufferRef.current = null;
       }
     };
-  }, [checkGlError]);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -263,7 +261,7 @@ const GamutGl = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [resolutionMultiplier, render, checkGlError]);
+  }, [resolutionMultiplier]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -276,16 +274,30 @@ const GamutGl = ({
     updateUniforms(gl, program);
     render(gl);
     checkGlError(gl);
-  }, [render, updateUniforms, checkGlError]);
+  }, [memoizedLMapping, memoizedCMapping, memoizedHMapping]);
 
   return (
     <div
-      className={cx("gamut-gl-container", props.className)}
+      className={props.className}
       ref={containerRef}
+      style={{
+        maxWidth: "100%",
+        maxHeight: "100%",
+        display: "grid",
+        gridTemplateRows: "1fr",
+        gridTemplateColumns: "1fr",
+        placeItems: "stretch stretch",
+        ...props.style,
+      }}
     >
-      <canvas className={cx("gamut-gl")} ref={canvasRef} />
+      <canvas
+        ref={canvasRef}
+        style={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+        }}
+      />
     </div>
   );
 };
-
-export default GamutGl;

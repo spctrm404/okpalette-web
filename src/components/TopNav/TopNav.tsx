@@ -16,6 +16,9 @@ const TopNav = () => {
         <Link to="/xyslider-test" style={{ marginRight: "10px" }}>
           xyslider Test
         </Link>
+        <Link to="/gamut-slider" style={{ marginRight: "10px" }}>
+          gamut slider
+        </Link>
       </nav>
       <main>
         <Outlet />

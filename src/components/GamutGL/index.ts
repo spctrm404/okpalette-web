@@ -1,1 +1,2 @@
-export { default as GamutGl } from "./GammutGl";
+export type { AxisMapping, GamutGlProps } from "./GammutGl";
+export { GamutGl } from "./GammutGl";

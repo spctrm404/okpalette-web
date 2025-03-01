@@ -1,0 +1,21 @@
+.layout {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  place-items: stretch stretch;
+  max-width: 37.5rem;
+  margin-inline: auto;
+}
+
+.gamut-slider {
+  position: relative;
+  display: grid;
+  place-items: stretch stretch;
+  aspect-ratio: 1 / 1;
+
+  > * {
+    grid-row: 1 / span 1;
+    grid-column: 1 / span 1;
+  }
+}

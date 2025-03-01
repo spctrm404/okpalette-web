@@ -1,12 +1,1 @@
-.gamut-gl {
-  display: block;
-  width: 100%;
-  height: 100%;
 
-  &-container {
-    display: grid;
-    grid-template-rows: 1fr;
-    grid-template-columns: 1fr;
-    place-items: stretch stretch;
-  }
-}
