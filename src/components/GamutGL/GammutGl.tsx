@@ -66,10 +66,18 @@ export const GamutGl = ({
     () => cMapping,
     [cMapping.mappedTo, cMapping.flipped, cMapping.from, cMapping.to],
   );
-  const memoizedHMapping = useMemo(
-    () => hMapping,
-    [hMapping.mappedTo, hMapping.flipped, hMapping.from, hMapping.to],
-  );
+  const memoizedHMapping = useMemo(() => {
+    const { from, to } = hMapping;
+    if (from <= to) {
+      return hMapping;
+    } else if (
+      (from === 0.0 && to === 360.0) ||
+      (from === 360.0 && to === 0.0)
+    ) {
+      return { ...hMapping, from: 0, to: 0 };
+    }
+    return { ...hMapping, to: to + 360.0 };
+  }, [hMapping.mappedTo, hMapping.flipped, hMapping.from, hMapping.to]);
 
   const render = (gl: WebGL2RenderingContext) => {
     gl.clear(gl.COLOR_BUFFER_BIT);
