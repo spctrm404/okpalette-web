@@ -107,6 +107,11 @@ export const XYThumb = ({
     if (constraintVal) {
       const constrainedVal = constraintVal(quantizedNewValue);
       const constrainedNormPos = valToNormPos(constrainedVal);
+      if (
+        constrainedVal.x !== quantizedNewValue.x ||
+        constrainedVal.y !== quantizedNewValue.y
+      )
+        console.log(`${idx}: value is constrained`);
       if (constrainedVal.x !== quantizedNewValue.x) {
         quantizedNewValue.x = constrainedVal.x;
         clampedNormPos.x = constrainedNormPos.x;
@@ -217,6 +222,9 @@ export const XYThumb = ({
         {...reactAriaProps}
         tabIndex={idx}
         style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
           width: `${thumbSize.width / 16.0}rem`,
           height: `${thumbSize.height / 16.0}rem`,
           transform: `translate(calc(${(trackSize.width * normPos.x) / 16.0}rem - 50%), calc(${(trackSize.height * (1 - normPos.y)) / 16.0}rem - 50%))`,

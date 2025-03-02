@@ -122,17 +122,58 @@ float axisMap(float mappedTo, float flipped, float from, float to, vec2 coord) {
   return mix(from, to, mappedCoord);
 }
 
+float axisMapForHue(
+  float mappedTo,
+  float flipped,
+  float from,
+  float to,
+  vec2 coord
+) {
+  // 0 -> (0, 0)
+  // 1 -> (1, 0)
+  // 2 -> (0, 1)
+  // 3 -> (1, 1)
+  vec2 flipMask =
+    step(vec2(1.0, 2.0), vec2(flipped)) + step(vec2(3.0), vec2(flipped));
+  flipMask = min(flipMask, vec2(1.0));
+
+  vec2 flippedCoord = mix(coord, 1.0 - coord, flipMask);
+
+  // if (mappedTo < 1.0) mappedCoord = 0.0
+  // if (mappedTo >= 1.0) mappedCoord = flippedCoord.x
+  float mappedCoord = mix(0.0, flippedCoord.x, step(1.0, mappedTo));
+  // if (mappedTo >= 2.0) mappedCoord = flippedCoord.y
+  mappedCoord = mix(mappedCoord, flippedCoord.y, step(2.0, mappedTo));
+  // if (mappedTo >= 3.0) mappedCoord = (flippedCoord.x + flippedCoord.y) / 2.0
+  mappedCoord = mix(
+    mappedCoord,
+    (flippedCoord.x + flippedCoord.y) * 0.5,
+    step(3.0, mappedTo)
+  );
+
+  // hFrom이 hTo보다 큰 경우, to를 360도 늘려서 보정
+  float adjustedTo = to + step(to, from) * 360.0;
+
+  // hFrom에서 adjustedTo까지 부드럽게 보간
+  float hue = mix(from, adjustedTo, mappedCoord);
+
+  // 0~360 범위 유지
+  hue = mod(hue, 360.0);
+
+  return hue * DEGREES_TO_RADIANS;
+}
+
 void main() {
   vec2 coord = gl_FragCoord.xy / u_resolution;
 
   vec3 oklch = vec3(
     axisMap(u_lMappedTo, u_lFlipped, u_lFrom, u_lTo, coord),
     axisMap(u_cMappedTo, u_cFlipped, u_cFrom, u_cTo, coord),
-    axisMap(u_hMappedTo, u_hFlipped, u_hFrom, u_hTo, coord)
+    axisMapForHue(u_hMappedTo, u_hFlipped, u_hFrom, u_hTo, coord)
   );
-  oklch.z =
-    mod(mix(oklch.z, oklch.z + 360.0, step(u_hTo, u_hFrom)), 360.0) *
-    DEGREES_TO_RADIANS;
+  // oklch.z =
+  //   mod(mix(oklch.z, oklch.z + 360.0, step(u_hTo, u_hFrom)), 360.0) *
+  //   DEGREES_TO_RADIANS;
 
   vec3 oklab = lchToLab(oklch);
   vec3 xyz = oklabToXyz(oklab);
