@@ -145,6 +145,8 @@ const XYSliderTest = () => {
             style={{ position: "relative", zIndex: 2 }}
           >
             <XYThumb
+              debug={true}
+              idx={0}
               val={{ x: h, y: c }}
               min={{ x: 0, y: 0 }}
               max={{ x: 360, y: 0.4 }}

@@ -17,6 +17,7 @@ export type XYThumbProps = {
   constraintVal?: (val: Dim2D) => Dim2D;
   className?: string;
   style?: React.CSSProperties;
+  debug?: boolean;
 };
 
 export const XYThumb = ({
@@ -50,7 +51,7 @@ export const XYThumb = ({
 
   const isMovingRef = useRef(false);
   const pxPosRef = useRef<Dim2D>(pxPosFromVal);
-  const [normPos, setnormPos] = useState<Dim2D>(normPosFromVal);
+  const [normPos, setNormPos] = useState<Dim2D>(normPosFromVal);
 
   const clampPxPos = (pxPos: Dim2D): Dim2D => ({
     x: Math.min(trackSize.width, Math.max(0, pxPos.x)),
@@ -108,10 +109,15 @@ export const XYThumb = ({
       const constrainedVal = constraintVal(quantizedNewValue);
       const constrainedNormPos = valToNormPos(constrainedVal);
       if (
-        constrainedVal.x !== quantizedNewValue.x ||
-        constrainedVal.y !== quantizedNewValue.y
-      )
-        console.log(`${idx}: value is constrained`);
+        (constrainedVal.x !== quantizedNewValue.x ||
+          constrainedVal.y !== quantizedNewValue.y) &&
+        props.debug
+      ) {
+        console.log(`@XYThumb${idx}: constraintVal();`);
+        console.log("val: ", quantizedNewValue);
+        console.log("constrainedVal: ", constrainedVal);
+        console.log("normPos: ", constrainedNormPos);
+      }
       if (constrainedVal.x !== quantizedNewValue.x) {
         quantizedNewValue.x = constrainedVal.x;
         clampedNormPos.x = constrainedNormPos.x;
@@ -125,7 +131,7 @@ export const XYThumb = ({
     // save last value
     lastValRef.current = quantizedNewValue;
     // update normPos
-    setnormPos(clampedNormPos);
+    setNormPos(clampedNormPos);
     // update prop
     onChange?.(quantizedNewValue);
   };
@@ -152,7 +158,6 @@ export const XYThumb = ({
       pxPos.y += e.deltaY;
 
       moveCommon(pxPos);
-      console.log(`${idx}: onMove`);
     },
     onMoveEnd: () => {
       // update pxPos
@@ -161,25 +166,14 @@ export const XYThumb = ({
 
       moveCommon(pxPosition);
       isMovingRef.current = false;
-      console.log(`${idx}: onMoveEnd`);
     },
   });
   const { pressProps, isPressed } = usePress({
-    onPress: () => {
-      // console.log(`${idx}: onPress`);
-    },
-    onPressStart: () => {
-      // console.log(`${idx}: onPressStart`);
-    },
-    onPressEnd: () => {
-      // console.log(`${idx}: onPressEnd`);
-    },
-    onPressChange: () => {
-      // console.log(`${idx}: onPressChange`);
-    },
-    onPressUp: () => {
-      // console.log(`${idx}: onPressUp`);
-    },
+    onPress: () => {},
+    onPressStart: () => {},
+    onPressEnd: () => {},
+    onPressChange: () => {},
+    onPressUp: () => {},
   });
 
   const reactAriaProps = mergeProps(
@@ -191,11 +185,15 @@ export const XYThumb = ({
 
   // update position from value
   if (val.x !== lastValRef.current.x || val.y !== lastValRef.current.y) {
-    console.log(`${idx}: new value come`);
+    if (props.debug) console.log(`@XYThumb${idx}: val != lastVal;`);
     if (constraintVal) {
       const constrainedVal = constraintVal(val);
       if (constrainedVal.x !== val.x || constrainedVal.y !== val.y) {
-        console.log(`${idx}: value needs to be constrained`);
+        if (props.debug) {
+          console.log(`@XYThumb${idx}: constraintVal();`);
+          console.log("val: ", val);
+          console.log("constrainedVal: ", constrainedVal);
+        }
         onChange?.(constrainedVal);
       }
     }
@@ -204,19 +202,31 @@ export const XYThumb = ({
       (pxPosFromVal.x !== pxPosRef.current.x ||
         pxPosFromVal.y !== pxPosRef.current.y)
     ) {
-      console.log(`${idx}: val -> pos`);
+      if (props.debug) {
+        console.log(`@XYThumb${idx}: pxPosFromVal != pxPos;`);
+        console.log("pxPosFromVal: ", pxPosFromVal);
+        console.log("pxPos: ", pxPosRef.current);
+      }
       pxPosRef.current = pxPosFromVal;
-      setnormPos(normPosFromVal);
+      setNormPos(normPosFromVal);
+      if (props.debug) console.log("normPos: ", normPosFromVal);
     }
     lastValRef.current = val;
   }
 
   useEffect(() => {
+    if (props.debug) {
+      console.log(`@XYThumb${idx}: trackSize is updated;`);
+      console.log("trackSize: ", trackSize);
+    }
     pxPosRef.current = pxPosFromVal;
+    if (props.debug) console.log("pxPos: ", pxPosRef.current);
   }, [trackSize]);
 
   return (
     <>
+      {props.debug ? console.log(`@XYThumb${idx}: rendered;`) : null}
+      {props.debug ? console.log("normPos: ", normPos) : null}
       <div
         className={props.className}
         {...reactAriaProps}
