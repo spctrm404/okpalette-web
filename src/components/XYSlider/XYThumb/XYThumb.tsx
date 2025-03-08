@@ -1,11 +1,8 @@
 import type { Dim2D } from "../index";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { XYTrackContext } from "../XYTrack";
+import { XYThumbSizeContext, XYTrackSizeContext } from "../index";
 import { mergeProps, useFocus, useHover, useMove, usePress } from "react-aria";
-import st from "./_XYThumb.module.scss";
-import classNames from "classnames/bind";
-
-const cx = classNames.bind(st);
+import classNames from "classnames";
 
 export type XYThumbProps = {
   min?: Dim2D;
@@ -30,9 +27,8 @@ export const XYThumb = ({
   constraintVal,
   ...props
 }: XYThumbProps) => {
-  const { trackSize, thumbSize } = useContext(XYTrackContext);
-
-  const lastValRef = useRef<Dim2D>(val);
+  const { thumbSize } = useContext(XYThumbSizeContext);
+  const { trackSize } = useContext(XYTrackSizeContext);
 
   const normPosFromVal: Dim2D = useMemo(
     () => ({
@@ -49,6 +45,7 @@ export const XYThumb = ({
     [normPosFromVal.x, normPosFromVal.y, trackSize.width, trackSize.height],
   );
 
+  const lastValRef = useRef<Dim2D>(val);
   const isMovingRef = useRef(false);
   const pxPosRef = useRef<Dim2D>(pxPosFromVal);
   const [normPos, setNormPos] = useState<Dim2D>(normPosFromVal);
@@ -150,7 +147,6 @@ export const XYThumb = ({
     onMoveStart: () => {},
     onMove: (e) => {
       isMovingRef.current = true;
-
       // update pxPos
       let pxPos = { ...pxPosRef.current };
       if (e.pointerType === "keyboard") pxPos = clampPxPos(pxPos);
