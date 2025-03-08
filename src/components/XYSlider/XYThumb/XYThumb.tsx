@@ -22,7 +22,7 @@ export const XYThumb = ({
   max = { x: 100, y: 100 },
   step = { x: 1, y: 1 },
   val,
-  idx,
+  idx = 0,
   onChange,
   constraintVal,
   ...props
@@ -105,24 +105,16 @@ export const XYThumb = ({
     if (constraintVal) {
       const constrainedVal = constraintVal(quantizedNewValue);
       const constrainedNormPos = valToNormPos(constrainedVal);
-      if (
-        (constrainedVal.x !== quantizedNewValue.x ||
-          constrainedVal.y !== quantizedNewValue.y) &&
-        props.debug
-      ) {
+      if (props.debug) {
         console.log(`@XYThumb${idx}: constraintVal();`);
         console.log("val: ", quantizedNewValue);
         console.log("constrainedVal: ", constrainedVal);
         console.log("normPos: ", constrainedNormPos);
       }
-      if (constrainedVal.x !== quantizedNewValue.x) {
-        quantizedNewValue.x = constrainedVal.x;
-        clampedNormPos.x = constrainedNormPos.x;
-      }
-      if (constrainedVal.y !== quantizedNewValue.y) {
-        quantizedNewValue.y = constrainedVal.y;
-        clampedNormPos.y = constrainedNormPos.y;
-      }
+      quantizedNewValue.x = constrainedVal.x;
+      quantizedNewValue.y = constrainedVal.y;
+      clampedNormPos.x = constrainedNormPos.x;
+      clampedNormPos.y = constrainedNormPos.y;
     }
 
     // save last value
@@ -147,7 +139,7 @@ export const XYThumb = ({
     onMoveStart: () => {},
     onMove: (e) => {
       isMovingRef.current = true;
-      // update pxPos
+
       let pxPos = { ...pxPosRef.current };
       if (e.pointerType === "keyboard") pxPos = clampPxPos(pxPos);
       pxPos.x += e.deltaX;
@@ -156,7 +148,6 @@ export const XYThumb = ({
       moveCommon(pxPos);
     },
     onMoveEnd: () => {
-      // update pxPos
       let pxPosition = { ...pxPosRef.current };
       pxPosition = clampPxPos(pxPosition);
 
@@ -182,17 +173,6 @@ export const XYThumb = ({
   // update position from value
   if (val.x !== lastValRef.current.x || val.y !== lastValRef.current.y) {
     if (props.debug) console.log(`@XYThumb${idx}: val != lastVal;`);
-    if (constraintVal) {
-      const constrainedVal = constraintVal(val);
-      if (constrainedVal.x !== val.x || constrainedVal.y !== val.y) {
-        if (props.debug) {
-          console.log(`@XYThumb${idx}: constraintVal();`);
-          console.log("val: ", val);
-          console.log("constrainedVal: ", constrainedVal);
-        }
-        onChange?.(constrainedVal);
-      }
-    }
     if (
       !isMovingRef.current &&
       (pxPosFromVal.x !== pxPosRef.current.x ||
@@ -221,10 +201,8 @@ export const XYThumb = ({
 
   return (
     <>
-      {props.debug ? console.log(`@XYThumb${idx}: rendered;`) : null}
-      {props.debug ? console.log("normPos: ", normPos) : null}
       <div
-        className={props.className}
+        className={classNames("xythumb", props.className)}
         {...reactAriaProps}
         tabIndex={idx}
         style={{

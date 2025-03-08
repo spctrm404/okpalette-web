@@ -8,38 +8,38 @@ const cx = classNames.bind(st);
 
 const XYSliderTest = () => {
   const [l, setL] = useState(0.8);
-  const [h, setH] = useState(0.2);
   const [c, setC] = useState(0.2);
-  const [hBegin, setHBegin] = useState(0.2);
-  const [hEnd, setHEnd] = useState(0.2);
+  const [hBegin, setHBegin] = useState(0);
+  const [hEnd, setHEnd] = useState(30);
 
-  const onChangeHBegin = ({ x, y }: Dim2D) => {
-    let newH = (y + hEnd) / 2.0;
-    newH += y < hEnd ? 0 : 180;
+  const convertHBeginAndHEndToH = (hBegin: number, hEnd: number) => {
+    let newH = (hBegin + hEnd) / 2.0;
+    newH += hBegin < hEnd ? 0 : 180;
     newH = newH % 360.0;
-    setHBegin(y);
+    return newH;
+  };
+  const [h, setH] = useState(convertHBeginAndHEndToH(hBegin, hEnd));
+
+  const onChangeHBegin = (newHBegin: number) => {
+    const newH = convertHBeginAndHEndToH(newHBegin, hEnd);
+    setHBegin(newHBegin);
     setH(newH);
   };
-  const onChangeHEnd = ({ x, y }: Dim2D) => {
-    let newH = (hBegin + y) / 2.0;
-    newH += hBegin < y ? 0 : 180;
-    newH = newH % 360.0;
-    setHEnd(y);
+  const onChangeHEnd = (newHEnd: number) => {
+    const newH = convertHBeginAndHEndToH(hBegin, newHEnd);
+    setHEnd(newHEnd);
     setH(newH);
   };
-  const onChangeH = ({ x, y }: Dim2D) => {
-    const delta = x - h;
-    setH(x);
-    setHBegin((prev) => {
+  const onChangeH = (newH: number) => {
+    const delta = newH - h;
+    setH(newH);
+    const setState = (prev: number) => {
       let newValue = prev + delta;
       if (newValue < 0) newValue += 360;
       return newValue % 360.0;
-    });
-    setHEnd((prev) => {
-      let newValue = prev + delta;
-      if (newValue < 0) newValue += 360;
-      return newValue % 360.0;
-    });
+    };
+    setHBegin(setState);
+    setHEnd(setState);
   };
 
   return (
@@ -55,7 +55,9 @@ const XYSliderTest = () => {
               min={{ x: 0, y: 0 }}
               max={{ x: 1, y: 360 }}
               step={{ x: 0.1, y: 0.1 }}
-              onChange={onChangeHBegin}
+              onChange={({ x, y }) => {
+                onChangeHBegin(y);
+              }}
               constraintVal={({ x, y }) => ({ x: 0, y: y })}
             />
             <XYThumb
@@ -63,7 +65,9 @@ const XYSliderTest = () => {
               min={{ x: 0, y: 0 }}
               max={{ x: 1, y: 360 }}
               step={{ x: 0.1, y: 0.1 }}
-              onChange={onChangeHEnd}
+              onChange={({ x, y }) => {
+                onChangeHEnd(y);
+              }}
               constraintVal={({ x, y }) => ({ x: 1, y: y })}
             />
           </XYTrack>
@@ -152,7 +156,7 @@ const XYSliderTest = () => {
               max={{ x: 360, y: 0.4 }}
               step={{ x: 0.1, y: 0.001 }}
               onChange={({ x, y }) => {
-                onChangeH({ x, y });
+                onChangeH(x);
                 setC(y);
               }}
             />
