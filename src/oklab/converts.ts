@@ -1,4 +1,4 @@
-import type { Vec3 } from "./types";
+import type { Vec3, ColorSpace } from "./types";
 import {
   OKLAB_TO_NON_LINEAR_LMS,
   NON_LINEAR_LMS_TO_OKLAB,
@@ -37,20 +37,16 @@ export const toNonLinearLms = (lms: Vec3): Vec3 => {
   return lms.map((val) => Math.cbrt(val)) as Vec3;
 };
 
-export const lchToLab = (lch: Vec3): Vec3 => {
+export const lchToLab = ([l, c, h]: Vec3): Vec3 => {
   return [
-    lch[0],
-    lch[1] * Math.cos((lch[2] * Math.PI) / 180),
-    lch[1] * Math.sin((lch[2] * Math.PI) / 180),
+    l,
+    c * Math.cos((h * Math.PI) / 180),
+    c * Math.sin((h * Math.PI) / 180),
   ];
 };
-export const labToLch = (lab: Vec3): Vec3 => {
-  const hue = (Math.atan2(lab[2], lab[1]) * 180) / Math.PI;
-  return [
-    lab[0],
-    Math.sqrt(lab[1] ** 2 + lab[2] ** 2),
-    hue >= 0 ? hue : hue + 360,
-  ];
+export const labToLch = ([l, a, b]: Vec3): Vec3 => {
+  const hue = (Math.atan2(b, a) * 180) / Math.PI;
+  return [l, Math.sqrt(a ** 2 + b ** 2), hue >= 0 ? hue : hue + 360];
 };
 
 // OKLCH->SRGB
@@ -101,4 +97,40 @@ export const displayp3ToOklab = (rgb: Vec3): Vec3 => {
 };
 export const displayp3ToOklch = (rgb: Vec3): Vec3 => {
   return labToLch(displayp3ToOklab(rgb));
+};
+
+export const isInGamut = ([l, c, h]: Vec3, colorSpace: ColorSpace): boolean => {
+  if (c === 0.0) return true;
+  const [r, g, b] =
+    colorSpace === "sRGB"
+      ? oklchToSrgb([l, c, h])
+      : oklchToDisplayp3([l, c, h]);
+  return Math.min(r, g, b) >= 0 && Math.max(r, g, b) <= 1;
+};
+
+export const findMaxChroma = (
+  l: number,
+  h: number,
+  colorSpace: ColorSpace,
+  epsilon = 1e-6,
+): number => {
+  let low = 0.0;
+  let high = 0.4; // c 값은 최대 0.4를 넘지 않음
+  let mid: number;
+
+  while (high - low > epsilon) {
+    mid = (low + high) / 2.0;
+    const [r, g, b] =
+      colorSpace === "sRGB"
+        ? oklchToSrgb([l, mid, h])
+        : oklchToDisplayp3([l, mid, h]);
+
+    if (Math.min(r, g, b) >= 0 && Math.max(r, g, b) <= 1) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return low;
 };

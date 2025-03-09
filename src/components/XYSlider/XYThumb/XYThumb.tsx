@@ -148,11 +148,12 @@ export const XYThumb = ({
       moveCommon(pxPos);
     },
     onMoveEnd: () => {
+      isMovingRef.current = false;
+
       let pxPosition = { ...pxPosRef.current };
       pxPosition = clampPxPos(pxPosition);
 
       moveCommon(pxPosition);
-      isMovingRef.current = false;
     },
   });
   const { pressProps, isPressed } = usePress({
@@ -171,12 +172,19 @@ export const XYThumb = ({
   );
 
   // update position from value
-  if (val.x !== lastValRef.current.x || val.y !== lastValRef.current.y) {
-    if (props.debug) console.log(`@XYThumb${idx}: val != lastVal;`);
+  if (
+    val.x !== lastValRef.current.x ||
+    val.y !== lastValRef.current.y ||
+    !isMovingRef.current
+  ) {
     if (
-      !isMovingRef.current &&
-      (pxPosFromVal.x !== pxPosRef.current.x ||
-        pxPosFromVal.y !== pxPosRef.current.y)
+      (val.x !== lastValRef.current.x || val.y !== lastValRef.current.y) &&
+      props.debug
+    )
+      console.log(`@XYThumb${idx}: val != lastVal;`);
+    if (
+      pxPosFromVal.x !== pxPosRef.current.x ||
+      pxPosFromVal.y !== pxPosRef.current.y
     ) {
       if (props.debug) {
         console.log(`@XYThumb${idx}: pxPosFromVal != pxPos;`);
@@ -189,6 +197,26 @@ export const XYThumb = ({
     }
     lastValRef.current = val;
   }
+
+  // // update position from value
+  // if (val.x !== lastValRef.current.x || val.y !== lastValRef.current.y) {
+  //   if (props.debug) console.log(`@XYThumb${idx}: val != lastVal;`);
+  //   if (
+  //     !isMovingRef.current &&
+  //     (pxPosFromVal.x !== pxPosRef.current.x ||
+  //       pxPosFromVal.y !== pxPosRef.current.y)
+  //   ) {
+  //     if (props.debug) {
+  //       console.log(`@XYThumb${idx}: pxPosFromVal != pxPos;`);
+  //       console.log("pxPosFromVal: ", pxPosFromVal);
+  //       console.log("pxPos: ", pxPosRef.current);
+  //     }
+  //     pxPosRef.current = pxPosFromVal;
+  //     setNormPos(normPosFromVal);
+  //     if (props.debug) console.log("normPos: ", normPosFromVal);
+  //   }
+  //   lastValRef.current = val;
+  // }
 
   useEffect(() => {
     if (props.debug) {

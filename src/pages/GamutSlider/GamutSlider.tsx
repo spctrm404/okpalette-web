@@ -1,4 +1,5 @@
-import { XYTrack, XYThumb, Dim2D } from "@/components/XYSlider";
+import { isInGamut, findMaxChroma } from "@/oklab";
+import { XYTrack, XYThumb } from "@/components/XYSlider";
 import { GamutGl } from "@/components/GamutGL";
 import { useState } from "react";
 import st from "./_GamutSlider.module.scss";
@@ -12,21 +13,21 @@ const XYSliderTest = () => {
   const [hBegin, setHBegin] = useState(0);
   const [hEnd, setHEnd] = useState(30);
 
-  const convertHBeginAndHEndToH = (hBegin: number, hEnd: number) => {
-    let newH = (hBegin + hEnd) / 2.0;
-    newH += hBegin < hEnd ? 0 : 180;
+  const lerpHue = (hBegin: number, hEnd: number, t: number) => {
+    const delta = hBegin < hEnd ? hEnd - hBegin : hEnd + 360 - hBegin;
+    let newH = hBegin + delta * t;
     newH = newH % 360.0;
     return newH;
   };
-  const [h, setH] = useState(convertHBeginAndHEndToH(hBegin, hEnd));
+  const [h, setH] = useState(lerpHue(hBegin, hEnd, 0.5));
 
   const onChangeHBegin = (newHBegin: number) => {
-    const newH = convertHBeginAndHEndToH(newHBegin, hEnd);
+    const newH = lerpHue(newHBegin, hEnd, 0.5);
     setHBegin(newHBegin);
     setH(newH);
   };
   const onChangeHEnd = (newHEnd: number) => {
-    const newH = convertHBeginAndHEndToH(hBegin, newHEnd);
+    const newH = lerpHue(hBegin, newHEnd, 0.5);
     setHEnd(newHEnd);
     setH(newH);
   };
@@ -115,6 +116,7 @@ const XYSliderTest = () => {
             style={{ position: "relative", zIndex: 2 }}
           >
             <XYThumb
+              debug={true}
               val={{ x: l, y: c }}
               min={{ x: 0, y: 0 }}
               max={{ x: 1, y: 0.4 }}
@@ -122,6 +124,16 @@ const XYSliderTest = () => {
               onChange={({ x, y }) => {
                 setL(x);
                 setC(y);
+              }}
+              constraintVal={({ x, y }) => {
+                if (isInGamut([x, y, lerpHue(hBegin, hEnd, x)], "Display-P3"))
+                  return { x, y };
+                const maxChroma = findMaxChroma(
+                  x,
+                  lerpHue(hBegin, hEnd, x),
+                  "Display-P3",
+                );
+                return { x, y: maxChroma };
               }}
             />
           </XYTrack>
@@ -149,7 +161,6 @@ const XYSliderTest = () => {
             style={{ position: "relative", zIndex: 2 }}
           >
             <XYThumb
-              debug={true}
               idx={0}
               val={{ x: h, y: c }}
               min={{ x: 0, y: 0 }}
@@ -176,6 +187,11 @@ const XYSliderTest = () => {
         </div>
       </div>
       <div>
+        <p>
+          {isInGamut([l, c, lerpHue(hBegin, hEnd, l)], "Display-P3")
+            ? "true"
+            : "false"}
+        </p>
         <p>l:{l}</p>
         <p>c:{c}</p>
         <p>hB:{hBegin}</p>
