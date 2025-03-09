@@ -14,7 +14,7 @@ uniform float u_hMappedTo; // 0: none, 1: x, 2: y, 3: xy
 uniform float u_hFlipped; // 0: none, 1: x, 2: y, 3: xy
 uniform float u_hFrom;
 uniform float u_hTo;
-uniform float u_gamut; // 0: srgb, 1: displayP3
+uniform float u_colorSpace; // 0: sRgb, 1: display-p3
 
 uniform mat3 u_OKLAB_TO_NON_LINEAR_LMS;
 uniform mat3 u_LINEAR_LMS_TO_XYZ;
@@ -28,12 +28,12 @@ const float DEGREES_TO_RADIANS = PI / 180.0;
 const float GAMUT_DISPLAY_P3 = 1.0;
 const int NEIGHBORS_NUM = 24;
 const vec2 NEIGHBORS_OFFSET[NEIGHBORS_NUM] = vec2[](
-  // Radius 1
+  // radius 1
   vec2(0.0, 1.0),
   vec2(1.0, 0.0),
   vec2(0.0, -1.0),
   vec2(-1.0, 0.0),
-  // Radius 2
+  // radius 2
   vec2(0.0, 2.0),
   vec2(2.0, 0.0),
   vec2(0.0, -2.0),
@@ -42,7 +42,7 @@ const vec2 NEIGHBORS_OFFSET[NEIGHBORS_NUM] = vec2[](
   vec2(-1.0, 1.0),
   vec2(1.0, -1.0),
   vec2(-1.0, -1.0),
-  // Radius 3
+  // radius 3
   vec2(0.0, 3.0),
   vec2(3.0, 0.0),
   vec2(0.0, -3.0),
@@ -57,7 +57,7 @@ const vec2 NEIGHBORS_OFFSET[NEIGHBORS_NUM] = vec2[](
   vec2(-1.0, -2.0)
 );
 
-float isInGamut(vec3 v) {
+float isInColorSpace(vec3 v) {
   // if both are 1.0, v is in [0, 1]
   vec3 check =
     // step(0.0, v) returns 1.0 if v >= 0.0, 0.0 if v < 0.0
@@ -76,11 +76,10 @@ vec3 lchToLab(vec3 lch) {
 vec3 oklabToXyz(vec3 oklab) {
   vec3 nonLinearLms = u_OKLAB_TO_NON_LINEAR_LMS * oklab;
   vec3 linearLms = pow(abs(nonLinearLms), vec3(3.0)) * sign(nonLinearLms);
-
   return u_LINEAR_LMS_TO_XYZ * linearLms;
 }
 
-vec3 xyzToLinearSrgb(vec3 xyz) {
+vec3 xyzToLinearSRgb(vec3 xyz) {
   return u_XYZ_TO_LINEAR_SRGB * xyz;
 }
 vec3 xyzToLinearDisplayP3(vec3 xyz) {
@@ -92,7 +91,6 @@ vec3 toNonLinearRgb(vec3 rgb) {
   vec3 abs = abs(rgb);
   vec3 nonlinear = sign * (1.055 * pow(abs, vec3(1.0 / 2.4)) - 0.055);
   vec3 linear = 12.92 * rgb;
-
   return mix(linear, nonlinear, step(0.0031308, abs));
 }
 
@@ -104,9 +102,7 @@ float axisMap(float mappedTo, float flipped, float from, float to, vec2 coord) {
   vec2 flipMask =
     step(vec2(1.0, 2.0), vec2(flipped)) + step(vec2(3.0), vec2(flipped));
   flipMask = min(flipMask, vec2(1.0));
-
   vec2 flippedCoord = mix(coord, 1.0 - coord, flipMask);
-
   // if (mappedTo < 1.0) mappedCoord = 0.0
   // if (mappedTo >= 1.0) mappedCoord = flippedCoord.x
   float mappedCoord = mix(0.0, flippedCoord.x, step(1.0, mappedTo));
@@ -118,7 +114,6 @@ float axisMap(float mappedTo, float flipped, float from, float to, vec2 coord) {
     (flippedCoord.x + flippedCoord.y) * 0.5,
     step(3.0, mappedTo)
   );
-
   return mix(from, to, mappedCoord);
 }
 
@@ -130,21 +125,16 @@ void main() {
     axisMap(u_hMappedTo, u_hFlipped, u_hFrom, u_hTo, coord)
   );
   oklch.z *= DEGREES_TO_RADIANS;
-
   vec3 oklab = lchToLab(oklch);
   vec3 xyz = oklabToXyz(oklab);
-
-  vec3 linearSrgb = xyzToLinearSrgb(xyz);
+  vec3 linearSRgb = xyzToLinearSRgb(xyz);
   vec3 linearDisplayP3 = xyzToLinearDisplayP3(xyz);
-
-  vec3 nonLinearSrgb = toNonLinearRgb(linearSrgb);
+  vec3 nonLinearSRgb = toNonLinearRgb(linearSRgb);
   vec3 nonLinearDisplayP3 = toNonLinearRgb(linearDisplayP3);
-
-  float inSrgb = isInGamut(linearSrgb);
-  float inDisplayP3 = isInGamut(linearDisplayP3);
-
+  float inSRgb = isInColorSpace(linearSRgb);
+  float inDisplayP3 = isInColorSpace(linearDisplayP3);
   // check if the pixel is a boundary
-  // if the pixel is in display-p3 but not in srgb, and any of the neighbors is in srgb, it is a boundary
+  // if the pixel is in display-p3 but not in sRgb, and any of the neighbors is in sRgb, it is a boundary
   float isBoundary = 0.0;
   for (int i = 0; i < NEIGHBORS_NUM; i++) {
     vec2 neighborCoord = coord + NEIGHBORS_OFFSET[i] / u_resolution;
@@ -156,19 +146,21 @@ void main() {
     neighborLch.z = mod(neighborLch.z, 360.0) * DEGREES_TO_RADIANS;
     vec3 neighborOklab = lchToLab(neighborLch);
     vec3 neighborXyz = oklabToXyz(neighborOklab);
-    vec3 neighborLinearSrgb = xyzToLinearSrgb(neighborXyz);
-
-    // Check if the neighbor is in the sRGB gamut
-    float neighborInSrgb = isInGamut(neighborLinearSrgb);
-    // if current pixel is in display-p3 but not in srgb, and the neighbor is in srgb, it is a boundary
-    isBoundary += step(0.5, inDisplayP3) * (1.0 - inSrgb) * neighborInSrgb;
+    vec3 neighborLinearSRgb = xyzToLinearSRgb(neighborXyz);
+    // Check if the neighbor is in the sRgb colorSpace
+    float neighborInSRgb = isInColorSpace(neighborLinearSRgb);
+    // if current pixel is in display-p3 but not in sRgb, and the neighbor is in sRgb, it is a boundary
+    isBoundary += step(0.5, inDisplayP3) * (1.0 - inSRgb) * neighborInSRgb;
   }
   isBoundary = step(1.0, isBoundary);
-
-  vec4 srgbColor = vec4(nonLinearSrgb, inSrgb);
+  vec4 sRgbColor = vec4(nonLinearSRgb, inSRgb);
   vec4 displayP3Color = vec4(
     nonLinearDisplayP3,
     (1.0 - isBoundary) * inDisplayP3
   );
-  outColor = mix(srgbColor, displayP3Color, step(GAMUT_DISPLAY_P3, u_gamut));
+  outColor = mix(
+    sRgbColor,
+    displayP3Color,
+    step(GAMUT_DISPLAY_P3, u_colorSpace)
+  );
 }

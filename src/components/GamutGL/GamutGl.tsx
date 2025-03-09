@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import type { ColorSpace } from "@/oklab";
 import {
   OKLAB_TO_NON_LINEAR_LMS,
   LINEAR_LMS_TO_XYZ,
@@ -8,10 +8,8 @@ import {
 } from "@/oklab";
 import vertex from "./vertex.glsl";
 import fragment from "./fragment.glsl";
-import st from "./_GamutGl.module.scss";
-import classNames from "classnames/bind";
-
-const cx = classNames.bind(st);
+import { useEffect, useMemo, useRef } from "react";
+import classNames from "classnames";
 
 enum AxisValue {
   none = 0,
@@ -31,7 +29,7 @@ export type GamutGlProps = {
   lMapping: AxisMapping;
   cMapping: AxisMapping;
   hMapping: AxisMapping;
-  gamut?: "srgb" | "displayP3";
+  colorSpace?: ColorSpace;
   resolutionMultiplier?: number;
   className?: string;
   style?: React.CSSProperties;
@@ -48,7 +46,7 @@ export const GamutGl = ({
   lMapping = { mappedTo: "x", flipped: "none", from: 0, to: 1 },
   cMapping = { mappedTo: "y", flipped: "none", from: 0, to: 0.4 },
   hMapping = { mappedTo: "x", flipped: "none", from: 0, to: 360 },
-  gamut = "displayP3",
+  colorSpace = "display-p3",
   resolutionMultiplier = 2,
   ...props
 }: GamutGlProps) => {
@@ -108,8 +106,8 @@ export const GamutGl = ({
     pourMapping(memoizedHMapping, "h");
 
     gl.uniform1f(
-      gl.getUniformLocation(program, "u_gamut"),
-      gamut === "srgb" ? 0 : 1,
+      gl.getUniformLocation(program, "u_colorSpace"),
+      colorSpace === "sRgb" ? 0 : 1,
     );
   };
 
@@ -286,7 +284,7 @@ export const GamutGl = ({
 
   return (
     <div
-      className={props.className}
+      className={classNames("gamut-gl-container", props.className)}
       ref={containerRef}
       style={{
         maxWidth: "100%",
@@ -299,6 +297,7 @@ export const GamutGl = ({
       }}
     >
       <canvas
+        className={classNames("gamut-gl")}
         ref={canvasRef}
         style={{
           display: "block",

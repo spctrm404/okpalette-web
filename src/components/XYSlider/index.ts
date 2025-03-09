@@ -4,6 +4,6 @@ export type {
   XYThumbSizeContextType,
   XYTrackSizeContextType,
 } from "./XYTrack";
-export { XYTrack, XYThumbSizeContext, XYTrackSizeContext } from "./XYTrack";
 export type { XYThumbProps } from "./XYThumb";
+export { XYTrack, XYThumbSizeContext, XYTrackSizeContext } from "./XYTrack";
 export { XYThumb } from "./XYThumb";

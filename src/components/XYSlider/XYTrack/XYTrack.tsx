@@ -53,7 +53,7 @@ export const XYTrack = ({ thumbSize, children, ...props }: XYTrackProps) => {
     <XYThumbSizeContext.Provider value={{ thumbSize: memoizedThumbSize }}>
       <XYTrackSizeContext.Provider value={{ trackSize }}>
         <div
-          className={classNames("xytrack-container", props.className)}
+          className={classNames("xy-track-container", props.className)}
           style={{
             position: "relative",
             minWidth: `calc(6.25rem + ${thumbSize.width / 16.0}rem)`,
@@ -62,7 +62,7 @@ export const XYTrack = ({ thumbSize, children, ...props }: XYTrackProps) => {
           }}
         >
           <div
-            className={classNames("xytrack")}
+            className={classNames("xy-track")}
             ref={trackRefCallback}
             style={{
               position: "absolute",

@@ -99,10 +99,13 @@ export const displayp3ToOklch = (rgb: Vec3): Vec3 => {
   return labToLch(displayp3ToOklab(rgb));
 };
 
-export const isInGamut = ([l, c, h]: Vec3, colorSpace: ColorSpace): boolean => {
+export const isInGamut = (
+  [l, c, h]: Vec3,
+  colorSpace: ColorSpace = "display-p3",
+): boolean => {
   if (c === 0.0) return true;
   const [r, g, b] =
-    colorSpace === "sRGB"
+    colorSpace === "sRgb"
       ? oklchToSrgb([l, c, h])
       : oklchToDisplayp3([l, c, h]);
   return Math.min(r, g, b) >= 0 && Math.max(r, g, b) <= 1;
@@ -111,7 +114,7 @@ export const isInGamut = ([l, c, h]: Vec3, colorSpace: ColorSpace): boolean => {
 export const findMaxChroma = (
   l: number,
   h: number,
-  colorSpace: ColorSpace,
+  colorSpace: ColorSpace = "display-p3",
   epsilon = 1e-6,
 ): number => {
   let low = 0.0;
@@ -121,7 +124,7 @@ export const findMaxChroma = (
   while (high - low > epsilon) {
     mid = (low + high) / 2.0;
     const [r, g, b] =
-      colorSpace === "sRGB"
+      colorSpace === "sRgb"
         ? oklchToSrgb([l, mid, h])
         : oklchToDisplayp3([l, mid, h]);
 

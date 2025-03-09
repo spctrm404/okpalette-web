@@ -1,7 +1,7 @@
 import type { Dim2D } from "../index";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { XYThumbSizeContext, XYTrackSizeContext } from "../index";
 import { mergeProps, useFocus, useHover, useMove, usePress } from "react-aria";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import classNames from "classnames";
 
 export type XYThumbProps = {
@@ -198,26 +198,6 @@ export const XYThumb = ({
     lastValRef.current = val;
   }
 
-  // // update position from value
-  // if (val.x !== lastValRef.current.x || val.y !== lastValRef.current.y) {
-  //   if (props.debug) console.log(`@XYThumb${idx}: val != lastVal;`);
-  //   if (
-  //     !isMovingRef.current &&
-  //     (pxPosFromVal.x !== pxPosRef.current.x ||
-  //       pxPosFromVal.y !== pxPosRef.current.y)
-  //   ) {
-  //     if (props.debug) {
-  //       console.log(`@XYThumb${idx}: pxPosFromVal != pxPos;`);
-  //       console.log("pxPosFromVal: ", pxPosFromVal);
-  //       console.log("pxPos: ", pxPosRef.current);
-  //     }
-  //     pxPosRef.current = pxPosFromVal;
-  //     setNormPos(normPosFromVal);
-  //     if (props.debug) console.log("normPos: ", normPosFromVal);
-  //   }
-  //   lastValRef.current = val;
-  // }
-
   useEffect(() => {
     if (props.debug) {
       console.log(`@XYThumb${idx}: trackSize is updated;`);
@@ -230,7 +210,7 @@ export const XYThumb = ({
   return (
     <>
       <div
-        className={classNames("xythumb", props.className)}
+        className={classNames("xy-thumb", props.className)}
         {...reactAriaProps}
         tabIndex={idx}
         style={{
@@ -240,7 +220,8 @@ export const XYThumb = ({
           width: `${thumbSize.width / 16.0}rem`,
           height: `${thumbSize.height / 16.0}rem`,
           transform: `translate(calc(${(trackSize.width * normPos.x) / 16.0}rem - 50%), calc(${(trackSize.height * (1 - normPos.y)) / 16.0}rem - 50%))`,
-          backgroundColor: "black",
+          // backgroundColor: "black",
+          border: "1px solid black",
           ...props.style,
         }}
       />
