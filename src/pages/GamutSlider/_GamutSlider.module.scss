@@ -1,10 +1,10 @@
 .layout {
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(2, minmax(6.25rem, 1fr));
+  grid-template-columns: repeat(2, minmax(6.25rem, 1fr));
   gap: 1rem;
   place-items: stretch stretch;
-  max-width: 37.5rem;
+  max-width: 60rem;
   margin-inline: auto;
 }
 
@@ -13,9 +13,13 @@
   display: grid;
   place-items: stretch stretch;
   aspect-ratio: 1 / 1;
+  background-color: oklch(95% 0 0deg);
 
   > * {
     grid-row: 1 / span 1;
     grid-column: 1 / span 1;
   }
+}
+
+.control {
 }

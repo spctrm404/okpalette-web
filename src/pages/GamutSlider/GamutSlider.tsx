@@ -11,6 +11,7 @@ const cx = classNames.bind(st);
 const XYSliderTest = () => {
   const [l, setL] = useState(0.8);
   const [c, setC] = useState(0.2);
+  const [isHRanged, setHRanged] = useState(true);
   const [hBegin, setHBegin] = useState(0);
   const [hEnd, setHEnd] = useState(30);
 
@@ -39,10 +40,79 @@ const XYSliderTest = () => {
     const setState = (prev: number) => {
       let newValue = prev + delta;
       if (newValue < 0) newValue += 360;
+      newValue = quantize(newValue, 0.1);
       return newValue % 360.0;
     };
     setHBegin(setState);
     setHEnd(setState);
+  };
+
+  const svgLCSectionLine = () => {
+    if (hBegin <= hEnd)
+      return (
+        <line
+          x1={0}
+          y1={100 * (1 - hBegin / 360.0)}
+          x2={100}
+          y2={100 * (1 - hEnd / 360.0)}
+          stroke="black"
+          strokeWidth={`${1 / 16.0}rem`}
+          strokeDasharray={"4,4"}
+          vector-effect="non-scaling-stroke"
+        />
+      );
+    return (
+      <>
+        <line
+          x1={0}
+          y1={100 * (1 - hBegin / 360.0)}
+          x2={100}
+          y2={100 * (1 - (hEnd + 360) / 360.0)}
+          stroke="black"
+          strokeWidth={`${1 / 16.0}rem`}
+          strokeDasharray={"4,4"}
+          vector-effect="non-scaling-stroke"
+        />
+        <line
+          x1={0}
+          y1={100 * (1 - (hBegin - 360) / 360.0)}
+          x2={100}
+          y2={100 * (1 - hEnd / 360.0)}
+          stroke="black"
+          strokeWidth={`${1 / 16.0}rem`}
+          strokeDasharray={"4,4"}
+          vector-effect="non-scaling-stroke"
+        />
+      </>
+    );
+  };
+  const svgLHSectionLine = () => {
+    return (
+      <line
+        x1={0}
+        y1={100 * (1 - c / 0.4)}
+        x2={100}
+        y2={100 * (1 - c / 0.4)}
+        stroke="black"
+        strokeWidth={`${1 / 16.0}rem`}
+        strokeDasharray={"4,4"}
+        vector-effect="non-scaling-stroke"
+      />
+    );
+  };
+  const svgHCSectionLine = () => {
+    return (
+      <line
+        x1={100 * l}
+        y1={0}
+        x2={100 * l}
+        y2={100}
+        stroke="black"
+        strokeWidth={`${1 / 16.0}rem`}
+        strokeDasharray={"4,4"}
+        vector-effect="non-scaling-stroke"
+      />
+    );
   };
 
   return (
@@ -69,18 +139,17 @@ const XYSliderTest = () => {
               inset: `${(0.5 * 20) / 16.0}rem ${(0.5 * 20) / 16.0}rem`,
             }}
           >
-            <line
-              x1={0}
-              y1={100 * (1 - hBegin / 360.0)}
-              x2={100}
-              y2={100 * (1 - hEnd / 360.0)}
-              stroke="black"
-              strokeWidth={"1px"}
-            />
+            {svgLCSectionLine()}
           </svg>
+          <div
+            className={cx("section-label")}
+            style={{ position: "relative", userSelect: "none", zIndex: 3 }}
+          >
+            LH
+          </div>
           <XYTrack
             thumbSize={{ width: 20, height: 20 }}
-            style={{ position: "relative", zIndex: 3 }}
+            style={{ position: "relative", zIndex: 4 }}
           >
             <XYThumb
               val={{ x: 0, y: hBegin }}
@@ -104,34 +173,63 @@ const XYSliderTest = () => {
             />
           </XYTrack>
         </div>
-        <div className={cx("gamut-slider")}>
-          <XYTrack
-            thumbSize={{ width: 20, height: 20 }}
-            style={{ position: "relative", zIndex: 2 }}
-          >
-            <XYThumb
-              val={{ x: l, y: c }}
-              min={{ x: 0, y: 0 }}
-              max={{ x: 1, y: 0.4 }}
-              step={{ x: 0.001, y: 0.001 }}
+        <div className={cx("control")}>
+          <div>
+            <p>range</p>
+            <input
+              type="checkbox"
+              onChange={(e) => {
+                console.log(e.currentTarget.checked);
+              }}
             />
-          </XYTrack>
+          </div>
+          <p>
+            {isInGamut([l, c, lerpHue(hBegin, hEnd, l)]) ? "true" : "false"}
+          </p>
+          <p>l:{l}</p>
+          <p>c:{c}</p>
+          <p>hB:{hBegin}</p>
+          <p>h:{h}</p>
+          <p>hE:{hEnd}</p>
+        </div>
+        <div className={cx("gamut-slider")}>
           <GamutGl
             className={cx("gamut-gl")}
             lMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 1 }}
             cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
-            hMapping={{ mappedTo: "none", flipped: "none", from: h, to: h }}
+            hMapping={{
+              mappedTo: "x",
+              flipped: "none",
+              from: hBegin,
+              to: hEnd,
+            }}
             style={{
-              zIndex: 1,
               position: "absolute",
+              zIndex: 1,
               inset: `${(0.5 * 20) / 16.0}rem ${(0.5 * 20) / 16.0}rem`,
             }}
           />
-        </div>
-        <div className={cx("gamut-slider")}>
+          <svg
+            viewBox="0 0 100 100"
+            style={{
+              display: "block",
+              position: "absolute",
+              zIndex: 2,
+              inset: `${(0.5 * 20) / 16.0}rem ${(0.5 * 20) / 16.0}rem`,
+            }}
+          >
+            {svgLHSectionLine()}
+            {svgHCSectionLine()}
+          </svg>
+          <div
+            className={cx("section-label")}
+            style={{ position: "relative", userSelect: "none", zIndex: 3 }}
+          >
+            LC
+          </div>
           <XYTrack
             thumbSize={{ width: 20, height: 20 }}
-            style={{ position: "relative", zIndex: 2 }}
+            style={{ position: "relative", zIndex: 4 }}
           >
             <XYThumb
               debug={true}
@@ -152,27 +250,39 @@ const XYSliderTest = () => {
               }}
             />
           </XYTrack>
+        </div>
+        <div className={cx("gamut-slider")}>
           <GamutGl
             className={cx("gamut-gl")}
-            lMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 1 }}
+            lMapping={{ mappedTo: "none", flipped: "none", from: l, to: l }}
             cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
-            hMapping={{
-              mappedTo: "x",
-              flipped: "none",
-              from: hBegin,
-              to: hEnd,
-            }}
+            hMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 360 }}
             style={{
-              zIndex: 1,
               position: "absolute",
+              zIndex: 1,
               inset: `${(0.5 * 20) / 16.0}rem ${(0.5 * 20) / 16.0}rem`,
             }}
           />
-        </div>
-        <div className={cx("gamut-slider")}>
+          <svg
+            viewBox="0 0 100 100"
+            style={{
+              display: "block",
+              position: "absolute",
+              zIndex: 2,
+              inset: `${(0.5 * 20) / 16.0}rem ${(0.5 * 20) / 16.0}rem`,
+            }}
+          >
+            {svgLHSectionLine()}
+          </svg>
+          <div
+            className={cx("section-label")}
+            style={{ position: "relative", userSelect: "none", zIndex: 3 }}
+          >
+            HC
+          </div>
           <XYTrack
             thumbSize={{ width: 20, height: 20 }}
-            style={{ position: "relative", zIndex: 2 }}
+            style={{ position: "relative", zIndex: 4 }}
           >
             <XYThumb
               idx={0}
@@ -186,26 +296,7 @@ const XYSliderTest = () => {
               }}
             />
           </XYTrack>
-          <GamutGl
-            className={cx("gamut-gl")}
-            lMapping={{ mappedTo: "none", flipped: "none", from: l, to: l }}
-            cMapping={{ mappedTo: "y", flipped: "none", from: 0, to: 0.4 }}
-            hMapping={{ mappedTo: "x", flipped: "none", from: 0, to: 360 }}
-            style={{
-              zIndex: 1,
-              position: "absolute",
-              inset: `${(0.5 * 20) / 16.0}rem ${(0.5 * 20) / 16.0}rem`,
-            }}
-          />
         </div>
-      </div>
-      <div>
-        <p>{isInGamut([l, c, lerpHue(hBegin, hEnd, l)]) ? "true" : "false"}</p>
-        <p>l:{l}</p>
-        <p>c:{c}</p>
-        <p>hB:{hBegin}</p>
-        <p>h:{h}</p>
-        <p>hE:{hEnd}</p>
       </div>
     </>
   );
