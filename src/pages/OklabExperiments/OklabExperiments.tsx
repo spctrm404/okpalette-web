@@ -1,6 +1,6 @@
 import type { Vec3 } from "@/oklab/types";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { srgbToOklch, oklchToSrgb } from "@/oklab/converts";
+import { sRgbToOklch, oklchToSRgb } from "@/oklab/converts";
 import st from "./_OklabExperiments.module.scss";
 import classNames from "classnames/bind";
 import midpoint from "culori/src/easing/midpoint";
@@ -15,7 +15,7 @@ const OklabExperiments = () => {
     (val: number, idx: number) => {
       const newSrgb = [...srgb];
       newSrgb[idx] = val;
-      const newOklch = srgbToOklch(newSrgb as Vec3);
+      const newOklch = sRgbToOklch(newSrgb as Vec3);
       setSrgb(newSrgb);
       setOklch(newOklch);
     },
@@ -25,7 +25,7 @@ const OklabExperiments = () => {
     (val: number, idx: number) => {
       const newOklch = [...oklch];
       newOklch[idx] = val;
-      const newSrgb = oklchToSrgb(newOklch as Vec3);
+      const newSrgb = oklchToSRgb(newOklch as Vec3);
       setOklch(newOklch);
       setSrgb(newSrgb);
     },
